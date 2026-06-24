@@ -1,0 +1,201 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Custom CSS Variables ─────────────────────────────────── */
+:root {
+  --bg-primary:      #050510;
+  --bg-secondary:    #0d0d2b;
+  --accent-pink:     #ff2d78;
+  --accent-purple:   #8b5cf6;
+  --accent-cyan:     #06b6d4;
+  --accent-gold:     #f59e0b;
+  --glass-bg:        rgba(255, 255, 255, 0.04);
+  --glass-border:    rgba(255, 255, 255, 0.08);
+  --glass-border-hi: rgba(255, 255, 255, 0.16);
+}
+
+/* ── Base Reset ───────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-primary);
+  color: #e2e8f0;
+  font-family: 'Inter', sans-serif;
+  overflow-x: hidden;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* ── Scrollbar ────────────────────────────────────────────── */
+::-webkit-scrollbar               { width: 4px; }
+::-webkit-scrollbar-track         { background: var(--bg-primary); }
+::-webkit-scrollbar-thumb         { background: var(--accent-purple); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover   { background: var(--accent-pink); }
+
+/* ── Glass Utility ────────────────────────────────────────── */
+@layer components {
+  .glass {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+
+  .glass-hi {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--glass-border-hi);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+  }
+
+  .glass-premium {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  }
+
+  .glow-pink   { box-shadow: 0 0 20px rgba(255, 45, 120, 0.3),  0 0 60px rgba(255, 45, 120, 0.1); }
+  .glow-purple { box-shadow: 0 0 20px rgba(139, 92, 246, 0.3),  0 0 60px rgba(139, 92, 246, 0.1); }
+  .glow-cyan   { box-shadow: 0 0 20px rgba(6, 182, 212, 0.3),   0 0 60px rgba(6, 182, 212, 0.1); }
+  .glow-gold   { box-shadow: 0 0 20px rgba(245, 158, 11, 0.3),  0 0 60px rgba(245, 158, 11, 0.1); }
+
+  .text-gradient-pink-purple {
+    background: linear-gradient(135deg, #ff2d78, #8b5cf6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .text-gradient-cyan-purple {
+    background: linear-gradient(135deg, #06b6d4, #8b5cf6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .text-gradient-gold-pink {
+    background: linear-gradient(135deg, #f59e0b, #ff2d78);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .btn-primary {
+    @apply relative inline-flex items-center justify-center gap-2 px-8 py-4 rounded-2xl font-display font-semibold text-white overflow-hidden transition-all duration-300 isolate;
+    background: linear-gradient(135deg, #ff2d78, #8b5cf6);
+  }
+  .btn-primary::before {
+    content: '';
+    @apply absolute inset-0 opacity-0 transition-opacity duration-300 -z-10;
+    background: linear-gradient(135deg, #8b5cf6, #ff2d78);
+  }
+  .btn-primary:hover::before { @apply opacity-100; }
+  .btn-primary:hover         { transform: translateY(-2px); box-shadow: 0 20px 60px rgba(139,92,246,0.4); }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-medium text-white/70 border border-white/10 transition-all duration-300;
+  }
+  .btn-ghost:hover {
+    @apply text-white border-white/20 bg-white/5;
+    transform: translateY(-1px);
+  }
+
+  /* Shimmer loading effect */
+  .shimmer-bg {
+    background: linear-gradient(90deg, transparent 25%, rgba(255,255,255,0.05) 50%, transparent 75%);
+    background-size: 200% 100%;
+    animation: shimmer 2.5s linear infinite;
+  }
+}
+
+/* ── Starfield Background ─────────────────────────────────── */
+.starfield {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+.starfield::before,
+.starfield::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(1px 1px at 20% 30%, rgba(255,255,255,0.4) 0%, transparent 100%),
+    radial-gradient(1px 1px at 80% 10%, rgba(255,255,255,0.3) 0%, transparent 100%),
+    radial-gradient(1px 1px at 50% 60%, rgba(255,255,255,0.2) 0%, transparent 100%),
+    radial-gradient(1px 1px at 10% 80%, rgba(255,255,255,0.35) 0%, transparent 100%),
+    radial-gradient(1px 1px at 90% 50%, rgba(255,255,255,0.25) 0%, transparent 100%),
+    radial-gradient(1px 1px at 40% 90%, rgba(255,255,255,0.3) 0%, transparent 100%),
+    radial-gradient(1px 1px at 70% 70%, rgba(255,255,255,0.2) 0%, transparent 100%),
+    radial-gradient(1px 1px at 30% 50%, rgba(255,255,255,0.35) 0%, transparent 100%),
+    radial-gradient(1px 1px at 60% 20%, rgba(255,255,255,0.25) 0%, transparent 100%);
+}
+
+/* ── Upload drag active ───────────────────────────────────── */
+.drop-active {
+  border-color: var(--accent-purple) !important;
+  background: rgba(139, 92, 246, 0.08) !important;
+  box-shadow: 0 0 40px rgba(139, 92, 246, 0.2) !important;
+}
+
+/* ── Recharts custom ──────────────────────────────────────── */
+.recharts-tooltip-wrapper .recharts-default-tooltip {
+  background: rgba(13, 13, 43, 0.95) !important;
+  border: 1px solid rgba(255,255,255,0.1) !important;
+  border-radius: 12px !important;
+  backdrop-filter: blur(16px) !important;
+}
+.recharts-cartesian-grid line { stroke: rgba(255,255,255,0.05) !important; }
+.recharts-cartesian-axis-tick text { fill: rgba(255,255,255,0.4) !important; font-size: 11px !important; }
+
+/* ── Print/Export Helpers ────────────────────────────────── */
+.show-on-print { display: none; }
+.export-mode .show-on-print { display: block !important; }
+.export-mode .no-print { display: none !important; }
+
+/* ── Professional Print Theme ────────────────────────────── */
+.print-theme {
+  background: #ffffff !important;
+  color: #1a1a1a !important;
+  padding: 60px !important;
+}
+.print-theme h1, .print-theme h2, .print-theme h3 { color: #000000 !important; }
+.print-theme .glass, .print-theme .glass-hi {
+  background: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: none !important;
+  color: #334155 !important;
+}
+.print-theme .text-white, .print-theme .text-white\/70, .print-theme .text-white\/50 {
+  color: #334155 !important;
+}
+.print-theme .bg-white\/5, .print-theme .bg-white\/10 {
+  background: #f1f5f9 !important;
+}
+.print-theme .border-white\/10, .print-theme .border-white\/5 {
+  border-color: #e2e8f0 !important;
+}
+.print-theme .text-gradient-pink-purple {
+  background: none !important;
+  -webkit-text-fill-color: #7c3aed !important;
+  color: #7c3aed !important;
+}
+.print-theme .recharts-cartesian-grid line { stroke: #e2e8f0 !important; }
+.print-theme .recharts-cartesian-axis-tick text { fill: #64748b !important; }
+.print-theme .recharts-text { fill: #1e293b !important; }
+
