@@ -138,7 +138,10 @@ export async function createShare({ username, score, status, emoji, userId }) {
 
     if (error) throw error;
 
-    const shareUrl = `${window.location.origin}/share/${shareId}`;
+    // Always use the configured production URL so share links never show localhost
+    // Falls back to window.location.origin only if VITE_APP_URL is not set
+    const appBase = import.meta.env.VITE_APP_URL?.replace(/\/$/, '') || window.location.origin;
+    const shareUrl = `${appBase}/share/${shareId}`;
     return { shareId, shareUrl };
 
   } catch (err) {

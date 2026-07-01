@@ -13,41 +13,90 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Upload, FileText, Clipboard, Heart, ArrowLeft, Sparkles,
   Eye, EyeOff, Key, AlertCircle, CheckCircle2, MessageSquare,
-  X, ExternalLink, Copy, CheckCheck, Wifi, WifiOff, Trash2, Loader2,
+  X, ExternalLink, Copy, CheckCheck, Wifi, WifiOff, Trash2, Loader2, ChevronDown,
 } from 'lucide-react';
 import LoadingScreen from '../components/analysis/LoadingScreen.jsx';
 import ParticipantConfirm from '../components/analysis/ParticipantConfirm.jsx';
 import { parseChat, getParticipantStats } from '../utils/chatParser.js';
 import { PROVIDERS, KEY_VALIDATORS, validateApiKey, testConnection } from '../utils/ai/index.js';
+import BondIQLogo from '../components/common/BondIQLogo.jsx';
 
-// ── API Key Guide Steps ────────────────────────────────────────────────────────
-const API_STEPS = [
-  {
-    number: '01', title: 'Open Google AI Studio',
-    description: 'Go to aistudio.google.com and sign in with your Google account. It is completely free.',
-    link: 'https://aistudio.google.com/app/apikey', linkLabel: 'Open AI Studio →', emoji: '🌐', color: 'cyan',
+// ── Per-provider API Key Guide config ─────────────────────────────────────────
+const PROVIDER_GUIDES = {
+  gemini: {
+    name: 'Gemini (Google)',
+    icon: '🧠',
+    accentColor: 'cyan',
+    url: 'https://aistudio.google.com/app/apikey',
+    isFree: true,
+    steps: [
+      { number: '01', emoji: '🌐', color: 'cyan',   title: 'Open Google AI Studio',   description: 'Go to aistudio.google.com and sign in with your Google account — completely free.', link: 'https://aistudio.google.com/app/apikey', linkLabel: 'Open AI Studio →' },
+      { number: '02', emoji: '🔑', color: 'gold',   title: 'Click "Get API Key"',     description: 'On the left sidebar, click "Get API Key", then click the blue "Create API Key" button.' },
+      { number: '03', emoji: '📁', color: 'purple', title: 'Select a Project',         description: 'Choose an existing Google Cloud project or click "Create API key in new project".' },
+      { number: '04', emoji: '📋', color: 'pink',   title: 'Copy Your Key',           description: 'Your key starts with "AIzaSy...". Click the copy icon next to it. Keep it private.' },
+      { number: '05', emoji: '✅', color: 'green',  title: 'Paste it Below',          description: 'Come back here and paste your key in the Gemini API Key field below.' },
+    ],
   },
-  {
-    number: '02', title: 'Click "Create API Key"',
-    description: 'On the left sidebar click "Get API Key", then click the blue "Create API Key" button.',
-    emoji: '🔑', color: 'gold',
+  groq: {
+    name: 'Groq',
+    icon: '⚡',
+    accentColor: 'amber',
+    url: 'https://console.groq.com/keys',
+    isFree: true,
+    steps: [
+      { number: '01', emoji: '🌐', color: 'cyan',   title: 'Open Groq Console',        description: 'Go to console.groq.com and sign up or log in — it is free, no credit card needed.', link: 'https://console.groq.com/keys', linkLabel: 'Open Groq Console →' },
+      { number: '02', emoji: '🔑', color: 'gold',   title: 'Go to API Keys',           description: 'In the left sidebar, click "API Keys".' },
+      { number: '03', emoji: '➕', color: 'purple', title: 'Create a New Key',         description: 'Click "Create API Key", give it any name (e.g. "BondIQ"), then click "Submit".' },
+      { number: '04', emoji: '📋', color: 'pink',   title: 'Copy Your Key',           description: 'Your key starts with "gsk_...". Copy it immediately — it is only shown once!' },
+      { number: '05', emoji: '✅', color: 'green',  title: 'Paste it Below',          description: 'Paste your Groq key in the API key field below and click Test Connection.' },
+    ],
   },
-  {
-    number: '03', title: 'Select a Project',
-    description: 'Choose an existing Google Cloud project or click "Create API key in new project".',
-    emoji: '📁', color: 'purple',
+  openrouter: {
+    name: 'OpenRouter',
+    icon: '🌐',
+    accentColor: 'purple',
+    url: 'https://openrouter.ai/keys',
+    isFree: true,
+    steps: [
+      { number: '01', emoji: '🌐', color: 'cyan',   title: 'Open OpenRouter',          description: 'Go to openrouter.ai and sign up with Google or GitHub — free account available.', link: 'https://openrouter.ai/keys', linkLabel: 'Open OpenRouter →' },
+      { number: '02', emoji: '🔑', color: 'gold',   title: 'Go to API Keys',           description: 'Click your avatar (top-right) → "API Keys", or go to openrouter.ai/keys directly.' },
+      { number: '03', emoji: '➕', color: 'purple', title: 'Create a Key',             description: 'Click "Create Key", give it a name (e.g. "BondIQ"), leave credit limit blank for free models.' },
+      { number: '04', emoji: '📋', color: 'pink',   title: 'Copy Your Key',           description: 'Your key starts with "sk-or-v1-...". Copy it — shown only once after creation.' },
+      { number: '05', emoji: '🆓', color: 'green',  title: 'Free Models Available',   description: 'OpenRouter has free models (like Gemini 2.5 Flash free tier). No billing needed for free models.' },
+      { number: '06', emoji: '✅', color: 'green',  title: 'Paste it Below',          description: 'Paste your key in the API key field below. BondIQ uses Gemini 2.5 Flash via OpenRouter.' },
+    ],
   },
-  {
-    number: '04', title: 'Copy Your API Key',
-    description: 'Your key looks like "AIzaSy...". Click the copy icon next to it. Keep it private.',
-    emoji: '📋', color: 'pink',
+  openai: {
+    name: 'OpenAI',
+    icon: '🤖',
+    accentColor: 'green',
+    url: 'https://platform.openai.com/api-keys',
+    isFree: false,
+    steps: [
+      { number: '01', emoji: '🌐', color: 'cyan',   title: 'Open OpenAI Platform',     description: 'Go to platform.openai.com and log in. You need to add billing credits (minimum ~$5).', link: 'https://platform.openai.com/api-keys', linkLabel: 'Open OpenAI Platform →' },
+      { number: '02', emoji: '💳', color: 'gold',   title: 'Add Billing Credits',      description: 'Go to Settings → Billing → Add payment method. Add at least $5 credits to start.' },
+      { number: '03', emoji: '🔑', color: 'purple', title: 'Go to API Keys',           description: 'Click your avatar → "API Keys" in the left sidebar, or go to platform.openai.com/api-keys.' },
+      { number: '04', emoji: '➕', color: 'pink',   title: 'Create a New Secret Key',  description: 'Click "Create new secret key", give it a name, select "All" permissions.' },
+      { number: '05', emoji: '📋', color: 'pink',   title: 'Copy Your Key',           description: 'Your key starts with "sk-...". Copy it immediately — shown only once!' },
+      { number: '06', emoji: '✅', color: 'green',  title: 'Paste it Below',          description: 'Paste your OpenAI key below. BondIQ uses gpt-4o-mini for analysis (very cost-efficient).' },
+    ],
   },
-  {
-    number: '05', title: 'Paste it Below',
-    description: 'Come back here and paste your key in the Gemini API Key field below.',
-    emoji: '✅', color: 'green',
+  claude: {
+    name: 'Claude (Anthropic)',
+    icon: '💜',
+    accentColor: 'purple',
+    url: 'https://console.anthropic.com/settings/keys',
+    isFree: false,
+    steps: [
+      { number: '01', emoji: '🌐', color: 'cyan',   title: 'Open Anthropic Console',   description: 'Go to console.anthropic.com and sign up or log in. Requires billing setup.', link: 'https://console.anthropic.com/settings/keys', linkLabel: 'Open Anthropic Console →' },
+      { number: '02', emoji: '💳', color: 'gold',   title: 'Add Credits',             description: 'Go to Settings → Billing → Add funds. Claude charges per token, starting from $5.' },
+      { number: '03', emoji: '🔑', color: 'purple', title: 'Go to API Keys',           description: 'In the left sidebar click "API Keys" under your workspace settings.' },
+      { number: '04', emoji: '➕', color: 'pink',   title: 'Create a Key',             description: 'Click "Create Key", give it a name like "BondIQ", then click "Create Key".' },
+      { number: '05', emoji: '📋', color: 'pink',   title: 'Copy Your Key',           description: 'Your key starts with "sk-ant-...". Copy it now — it is only shown once.' },
+      { number: '06', emoji: '✅', color: 'green',  title: 'Paste it Below',          description: 'Paste your Claude key below. BondIQ uses claude-3-haiku for deep emotional analysis.' },
+    ],
   },
-];
+};
 
 const STEP_COLORS = {
   cyan:   { bg: 'bg-cyan-500/10',   border: 'border-cyan-500/20',   text: 'text-cyan-400',   num: 'bg-cyan-500/20 text-cyan-300' },
@@ -57,10 +106,11 @@ const STEP_COLORS = {
   green:  { bg: 'bg-emerald-500/10',border: 'border-emerald-500/20',text: 'text-emerald-400',num: 'bg-emerald-500/20 text-emerald-300' },
 };
 
-// ── API Key Guide Modal ────────────────────────────────────────────────────────
-function ApiKeyGuideModal({ onClose }) {
+// ── API Key Guide Modal (provider-aware) ──────────────────────────────────────
+function ApiKeyGuideModal({ onClose, provider }) {
   const [copied, setCopied] = useState(false);
-  const url = 'https://aistudio.google.com/app/apikey';
+  const guide = PROVIDER_GUIDES[provider] || PROVIDER_GUIDES.gemini;
+  const { name, icon, url, isFree, steps } = guide;
 
   return (
     <motion.div
@@ -80,15 +130,22 @@ function ApiKeyGuideModal({ onClose }) {
         className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl border border-white/10"
         style={{ background: 'linear-gradient(135deg, #0d0d2b, #0a0a1e)' }}
       >
+        {/* Header */}
         <div className="sticky top-0 flex items-center justify-between px-6 pt-6 pb-4 border-b border-white/5"
              style={{ background: 'linear-gradient(135deg, #0d0d2b, #0a0a1e)' }}>
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
-              <Key size={18} className="text-amber-400" />
+            <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-xl">
+              {icon}
             </div>
             <div>
-              <h2 className="font-display font-bold text-white text-lg">Get Your API Key</h2>
-              <p className="text-white/30 text-xs">Free — 5 easy steps</p>
+              <h2 className="font-display font-bold text-white text-lg">Get {name} API Key</h2>
+              <div className="flex items-center gap-2 mt-0.5">
+                <p className="text-white/30 text-xs">{steps.length} steps</p>
+                {isFree
+                  ? <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">Free</span>
+                  : <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-amber-500/15 text-amber-400 border border-amber-500/20">Paid</span>
+                }
+              </div>
             </div>
           </div>
           <button onClick={onClose} className="w-8 h-8 rounded-full glass border border-white/10 flex items-center justify-center text-white/40 hover:text-white transition-colors">
@@ -96,6 +153,7 @@ function ApiKeyGuideModal({ onClose }) {
           </button>
         </div>
 
+        {/* URL bar */}
         <div className="px-6 pt-4 pb-2">
           <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-cyan-500/5 border border-cyan-500/15">
             <span className="text-cyan-400 text-xs font-mono flex-1 truncate">{url}</span>
@@ -113,15 +171,16 @@ function ApiKeyGuideModal({ onClose }) {
           </div>
         </div>
 
+        {/* Steps */}
         <div className="px-6 pb-6 flex flex-col gap-3 mt-2">
-          {API_STEPS.map((step, i) => {
+          {steps.map((step, i) => {
             const c = STEP_COLORS[step.color];
             return (
-              <motion.div key={i} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.07 }}
+              <motion.div key={i} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.06 }}
                 className={`flex gap-4 p-4 rounded-2xl border ${c.bg} ${c.border}`}>
                 <div className="flex flex-col items-center gap-2">
                   <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold font-display ${c.num}`}>{step.number}</div>
-                  {i < API_STEPS.length - 1 && <div className="w-px flex-1 bg-white/5 min-h-[20px]" />}
+                  {i < steps.length - 1 && <div className="w-px flex-1 bg-white/5 min-h-[20px]" />}
                 </div>
                 <div className="flex-1 pt-1">
                   <div className="flex items-center gap-2 mb-1">
@@ -142,6 +201,7 @@ function ApiKeyGuideModal({ onClose }) {
           })}
         </div>
 
+        {/* CTA */}
         <div className="px-6 pb-6">
           <button onClick={onClose} className="w-full py-3 rounded-2xl text-sm font-semibold text-white transition-all"
             style={{ background: 'linear-gradient(135deg, #f59e0b, #ff2d78)' }}>
@@ -154,7 +214,302 @@ function ApiKeyGuideModal({ onClose }) {
   );
 }
 
-// ── Platform Selector ──────────────────────────────────────────────────────────
+// ── Platform Export Guides ─────────────────────────────────────────────────────
+const PLATFORM_GUIDES = {
+  whatsapp: {
+    name: 'WhatsApp',
+    emoji: '💬',
+    color: 'emerald',
+    headerBg: 'rgba(16,185,129,0.08)',
+    headerBorder: 'rgba(16,185,129,0.2)',
+    note: 'Works on Android & iPhone',
+    steps: [
+      {
+        number: '01', emoji: '📱', color: 'cyan',
+        title: 'Open WhatsApp',
+        description: 'Apne phone mein WhatsApp open karo aur us contact ki chat open karo jise analyze karna hai.',
+      },
+      {
+        number: '02', emoji: '⋮', color: 'gold',
+        title: 'Tap the 3-dot menu (top right)',
+        description: 'Chat ke andar top-right mein 3 dots (⋮) ya iPhone pe share icon pe tap karo.',
+      },
+      {
+        number: '03', emoji: '📤', color: 'purple',
+        title: 'Select "More" → "Export Chat"',
+        description: 'Menu mein "More" option pe tap karo, phir "Export chat" select karo.',
+      },
+      {
+        number: '04', emoji: '📷', color: 'pink',
+        title: 'Choose "Without Media"',
+        description: '"Without Media" choose karo — sirf text chahiye, images/videos nahi. File size bhi chhoti hogi.',
+      },
+      {
+        number: '05', emoji: '💾', color: 'pink',
+        title: 'Save the .txt file',
+        description: 'WhatsApp ek .txt file banayega. Ise apne Files app / Google Drive / Email mein save karo ya directly share karo.',
+      },
+      {
+        number: '06', emoji: '⬆️', color: 'green',
+        title: 'Upload here',
+        description: 'Woh .txt file yahan Upload tab mein upload karo, ya file khol ke saara text copy karke Paste tab mein paste karo. Done! ✅',
+      },
+    ],
+  },
+  telegram: {
+    name: 'Telegram',
+    emoji: '✈️',
+    color: 'cyan',
+    headerBg: 'rgba(6,182,212,0.08)',
+    headerBorder: 'rgba(6,182,212,0.2)',
+    note: 'Desktop app recommended',
+    steps: [
+      {
+        number: '01', emoji: '💻', color: 'cyan',
+        title: 'Open Telegram Desktop',
+        description: 'Telegram Desktop app kholo (telegram.org se download karo agar nahi hai). Phone se bhi ho sakta hai lekin Desktop zyada easy hai.',
+      },
+      {
+        number: '02', emoji: '💬', color: 'gold',
+        title: 'Open the chat',
+        description: 'Woh chat open karo jise analyze karna hai.',
+      },
+      {
+        number: '03', emoji: '⋮', color: 'purple',
+        title: 'Click the 3-dot menu',
+        description: 'Chat ke top-right mein 3 dots (⋮) ya hamburger menu pe click karo.',
+      },
+      {
+        number: '04', emoji: '📤', color: 'pink',
+        title: 'Select "Export Chat History"',
+        description: '"Export Chat History" option dhundo aur click karo. Ek dialog box khulega.',
+      },
+      {
+        number: '05', emoji: '⚙️', color: 'pink',
+        title: 'Select format: JSON or Text',
+        description: 'Format mein "Machine-readable JSON" ya "Human-readable text" select karo. Media sab uncheck kar do — sirf text chahiye.',
+      },
+      {
+        number: '06', emoji: '📁', color: 'green',
+        title: 'Find the exported file',
+        description: 'Export hone ke baad ek folder milega. Usme "messages.html" ya "result.json" hoga. Text format mein .txt milega.',
+      },
+      {
+        number: '07', emoji: '⬆️', color: 'green',
+        title: 'Upload here',
+        description: 'Woh file yahan Upload tab mein drag & drop karo, ya text copy karke Paste tab mein paste karo. ✅',
+      },
+    ],
+  },
+  instagram: {
+    name: 'Instagram',
+    emoji: '📸',
+    color: 'pink',
+    headerBg: 'rgba(236,72,153,0.08)',
+    headerBorder: 'rgba(236,72,153,0.2)',
+    note: 'Takes a few minutes to prepare',
+    steps: [
+      {
+        number: '01', emoji: '📱', color: 'cyan',
+        title: 'Open Instagram App',
+        description: 'Instagram app kholo aur apni profile pe jao (bottom-right mein apni photo pe tap karo).',
+      },
+      {
+        number: '02', emoji: '☰', color: 'gold',
+        title: 'Go to Settings',
+        description: 'Top-right mein hamburger menu (☰) tap karo → "Settings and privacy" select karo.',
+      },
+      {
+        number: '03', emoji: '📦', color: 'purple',
+        title: 'Your Activity → Download your information',
+        description: '"Your activity" section mein jao → "Download your information" ya "Transfer a copy of your information" pe tap karo.',
+      },
+      {
+        number: '04', emoji: '✉️', color: 'pink',
+        title: 'Request Download',
+        description: 'Apni email confirm karo, format mein "JSON" ya "HTML" select karo, date range set karo. "Request a download" pe tap karo.',
+      },
+      {
+        number: '05', emoji: '⏳', color: 'pink',
+        title: 'Wait for the email',
+        description: 'Instagram kuch minutes se kuch ghante mein aapki email pe ek download link bhejega. Busy time mein zyada time lag sakta hai.',
+      },
+      {
+        number: '06', emoji: '📬', color: 'gold',
+        title: 'Download the file',
+        description: 'Email mein aaye link pe click karo, file download karo aur unzip karo. "messages" folder mein tumhari DM files millengi.',
+      },
+      {
+        number: '07', emoji: '⬆️', color: 'green',
+        title: 'Upload or paste here',
+        description: 'messages folder se us conversation ki file copy karo aur yahan paste karo, ya file upload karo. ✅',
+      },
+    ],
+  },
+};
+
+// ── Platform Guide Modal ─────────────────────────────────────────────────────
+function PlatformGuideModal({ onClose, platform }) {
+  const guide = PLATFORM_GUIDES[platform];
+  if (!guide) return null;
+  const { name, emoji, steps, note, headerBg, headerBorder } = guide;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: 'rgba(5,5,16,0.88)', backdropFilter: 'blur(16px)' }}
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.9, y: 20 }}
+        transition={{ type: 'spring', damping: 20 }}
+        onClick={e => e.stopPropagation()}
+        className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl border border-white/10"
+        style={{ background: 'linear-gradient(135deg, #0d0d2b, #0a0a1e)' }}
+      >
+        {/* Header */}
+        <div
+          className="sticky top-0 flex items-center justify-between px-6 pt-6 pb-4 border-b border-white/5 rounded-t-3xl"
+          style={{ background: `linear-gradient(135deg, ${headerBg}, rgba(13,13,43,0.95))`, borderBottom: `1px solid ${headerBorder}` }}
+        >
+          <div className="flex items-center gap-3">
+            <div
+              className="w-10 h-10 rounded-2xl flex items-center justify-center text-2xl"
+              style={{ background: headerBg, border: `1px solid ${headerBorder}` }}
+            >
+              {emoji}
+            </div>
+            <div>
+              <h2 className="font-display font-bold text-white text-lg">Export from {name}</h2>
+              <p className="text-white/30 text-xs">{note} · {steps.length} steps</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-full glass border border-white/10 flex items-center justify-center text-white/40 hover:text-white transition-colors"
+          >
+            <X size={14} />
+          </button>
+        </div>
+
+        {/* Steps */}
+        <div className="px-6 pb-6 flex flex-col gap-3 mt-4">
+          {steps.map((step, i) => {
+            const c = STEP_COLORS[step.color];
+            return (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.06 }}
+                className={`flex gap-4 p-4 rounded-2xl border ${c.bg} ${c.border}`}
+              >
+                <div className="flex flex-col items-center gap-2">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold font-display flex-shrink-0 ${c.num}`}>
+                    {step.number}
+                  </div>
+                  {i < steps.length - 1 && <div className="w-px flex-1 bg-white/5 min-h-[20px]" />}
+                </div>
+                <div className="flex-1 pt-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-base">{step.emoji}</span>
+                    <p className={`font-display font-semibold text-sm ${c.text}`}>{step.title}</p>
+                  </div>
+                  <p className="text-white/55 text-xs leading-relaxed">{step.description}</p>
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
+
+        {/* CTA */}
+        <div className="px-6 pb-6">
+          <button
+            onClick={onClose}
+            className="w-full py-3 rounded-2xl text-sm font-semibold text-white transition-all"
+            style={{ background: 'linear-gradient(135deg, #8b5cf6, #ff2d78)' }}
+          >
+            Got it — I'll export my chat! ✓
+          </button>
+          <p className="text-center text-white/20 text-xs mt-3">🔒 Your chat stays on your device. Nothing is uploaded to our servers.</p>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+// ── Capacity Card (collapsible) ───────────────────────────────────────────────
+function CapacityCard({ info, tc }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.2 }}
+      className="mb-4 rounded-xl overflow-hidden"
+      style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)' }}
+    >
+      {/* ─ Compact always-visible chip ─ */}
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-white/[0.02] transition-colors"
+      >
+        <span className="text-base">{info.icon}</span>
+        <span className="text-white/70 text-xs font-mono font-semibold flex-1 text-left truncate">{info.model}</span>
+        <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${tc.bg} ${tc.border} ${tc.text} border flex-shrink-0`}>
+          {info.tier}
+        </span>
+        <span className="text-white/35 text-[10px] flex-shrink-0">{info.msgs}</span>
+        <motion.span animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.2 }}>
+          <ChevronDown size={13} className="text-white/25" />
+        </motion.span>
+      </button>
+
+      {/* ─ Expanded details ─ */}
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            key="details"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25, ease: 'easeInOut' }}
+            style={{ overflow: 'hidden', borderTop: '1px solid rgba(255,255,255,0.05)' }}
+          >
+            <div className="px-3 py-3 flex flex-col gap-2">
+              {/* Bar */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-white/35 text-[10px] uppercase tracking-wider">Message Capacity</span>
+                  <span className={`text-[10px] font-medium ${tc.text}`}>{info.msgsNote}</span>
+                </div>
+                <div className="h-1.5 rounded-full bg-white/5 overflow-hidden">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${info.barPct}%` }}
+                    transition={{ duration: 0.5, ease: 'easeOut' }}
+                    className={`h-full rounded-full bg-gradient-to-r ${info.barColor}`}
+                  />
+                </div>
+              </div>
+              {/* Meta */}
+              <div className="flex items-center justify-between">
+                <span className="text-white/20 text-[10px]">Context: <span className="text-white/45 font-medium">{info.context}</span></span>
+                <span className="text-white/20 text-[10px]">{info.speed}</span>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+}
+
 const PLATFORMS = [
   { id: 'auto',      label: 'Auto Detect', emoji: '✨' },
   { id: 'whatsapp',  label: 'WhatsApp',    emoji: '💬' },
@@ -202,6 +557,7 @@ export default function UploadPage({ analysis, apiKey, setApiKey, provider, setP
   const [dragOver,          setDragOver]          = useState(false);
   const [showKey,           setShowKey]           = useState(false);
   const [showApiGuide,      setShowApiGuide]      = useState(false);
+  const [showPlatformGuide, setShowPlatformGuide] = useState(false);
   const [tab,               setTab]               = useState('paste');
   const [fileInfo,          setFileInfo]          = useState(null);
   const [testStatus,        setTestStatus]        = useState('idle'); // idle | testing | ok | fail
@@ -363,13 +719,7 @@ export default function UploadPage({ analysis, apiKey, setApiKey, provider, setP
         <button onClick={() => navigate('/')} className="flex items-center gap-2 text-white/40 hover:text-white transition-colors text-sm">
           <ArrowLeft size={16} /> Back
         </button>
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg flex items-center justify-center"
-               style={{ background: 'linear-gradient(135deg, #ff2d78, #8b5cf6)' }}>
-            <Heart size={13} className="text-white" fill="white" />
-          </div>
-          <span className="font-display font-bold text-white text-sm">BondIQ</span>
-        </div>
+        <BondIQLogo size={30} textSize="sm" />
       </motion.header>
 
       {/* ── Main Content ────────────────────────────────────── */}
@@ -415,7 +765,47 @@ export default function UploadPage({ analysis, apiKey, setApiKey, provider, setP
             </div>
           </motion.div>
 
-          {/* Participant confirmation overlay */}
+          {/* Platform export guide button — for WhatsApp, Telegram, Instagram */}
+          <AnimatePresence mode="wait">
+            {PLATFORM_GUIDES[platform] && (
+              <motion.div
+                key={platform}
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.2 }}
+                className="mb-4 -mt-2"
+              >
+                <motion.button
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setShowPlatformGuide(true)}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group"
+                  style={{
+                    background: PLATFORM_GUIDES[platform].headerBg,
+                    border: `1px solid ${PLATFORM_GUIDES[platform].headerBorder}`,
+                  }}
+                >
+                  <span className="text-xl">{PLATFORM_GUIDES[platform].emoji}</span>
+                  <div className="text-left flex-1">
+                    <p className="text-white/80 text-sm font-semibold group-hover:text-white transition-colors">
+                      How to export chat from {PLATFORM_GUIDES[platform].name}?
+                    </p>
+                    <p className="text-white/30 text-xs mt-0.5">
+                      Step-by-step guide · {PLATFORM_GUIDES[platform].steps.length} steps · {PLATFORM_GUIDES[platform].note}
+                    </p>
+                  </div>
+                  <div
+                    className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors"
+                    style={{ background: PLATFORM_GUIDES[platform].headerBorder }}
+                  >
+                    <span className="text-white text-xs font-bold">{PLATFORM_GUIDES[platform].steps.length}</span>
+                  </div>
+                </motion.button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           <AnimatePresence>
             {showParticipants && participantStats && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="mb-6">
@@ -538,21 +928,59 @@ export default function UploadPage({ analysis, apiKey, setApiKey, provider, setP
                 </select>
               </div>
 
-              {/* How to get key (Gemini only) */}
-              {provider === PROVIDERS.GEMINI && (
-                <motion.button whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.98 }}
-                  onClick={() => setShowApiGuide(true)}
-                  className="w-full mb-4 flex items-center gap-3 px-4 py-3 rounded-xl border border-amber-500/25 bg-amber-500/8 hover:bg-amber-500/12 hover:border-amber-500/40 transition-all duration-200 group">
-                  <span className="text-xl">🗝️</span>
-                  <div className="text-left flex-1">
-                    <p className="text-amber-300 text-sm font-semibold group-hover:text-amber-200 transition-colors">How to get your free API key?</p>
-                    <p className="text-white/30 text-xs mt-0.5">Step-by-step guide → takes 2 minutes</p>
-                  </div>
-                  <div className="w-7 h-7 rounded-lg bg-amber-500/15 flex items-center justify-center flex-shrink-0 group-hover:bg-amber-500/25 transition-colors">
-                    <span className="text-amber-400 text-xs font-bold">5</span>
-                  </div>
-                </motion.button>
-              )}
+              {/* ── Provider capacity info card (collapsible) ────────── */}
+              {(() => {
+                const INFO = {
+                  [PROVIDERS.GEMINI]:     { model: 'gemini-2.0-flash',    tier: 'Free',             tierColor: 'emerald', icon: '🧠', msgs: '~50,000 msgs', barPct: 95, barColor: 'from-emerald-500 to-cyan-400',   context: '1M tokens',   msgsNote: 'Best for large chats',    speed: '⚡ Fast' },
+                  [PROVIDERS.GROQ]:       { model: 'llama-3.1-8b-instant',tier: 'Free · limited',   tierColor: 'amber',   icon: '⚡', msgs: '~3,000 msgs',  barPct: 30, barColor: 'from-amber-500 to-orange-400', context: '128K tokens', msgsNote: 'Best for short chats',    speed: '🚀 Fastest' },
+                  [PROVIDERS.OPENROUTER]: { model: 'gemini-2.5-flash',    tier: 'Free · rate limit',tierColor: 'cyan',    icon: '🌐', msgs: '~40,000 msgs', barPct: 85, barColor: 'from-cyan-500 to-purple-400',  context: '1M tokens',   msgsNote: 'Great for large chats',   speed: '⚡ Fast' },
+                  [PROVIDERS.OPENAI]:     { model: 'gpt-4o-mini',         tier: 'Paid',             tierColor: 'pink',    icon: '🤖', msgs: '~10,000 msgs', barPct: 55, barColor: 'from-pink-500 to-rose-400',    context: '128K tokens', msgsNote: 'Balanced & accurate',     speed: '✅ Accurate' },
+                  [PROVIDERS.CLAUDE]:     { model: 'claude-3-haiku',      tier: 'Paid',             tierColor: 'purple',  icon: '💜', msgs: '~20,000 msgs', barPct: 70, barColor: 'from-purple-500 to-violet-400',context: '200K tokens', msgsNote: 'Best emotional depth',    speed: '🔍 Deep' },
+                };
+                const TIER_COLORS = {
+                  emerald: { bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', text: 'text-emerald-400' },
+                  amber:   { bg: 'bg-amber-500/10',  border: 'border-amber-500/20',   text: 'text-amber-400' },
+                  cyan:    { bg: 'bg-cyan-500/10',   border: 'border-cyan-500/20',    text: 'text-cyan-400' },
+                  pink:    { bg: 'bg-pink-500/10',   border: 'border-pink-500/20',    text: 'text-pink-400' },
+                  purple:  { bg: 'bg-purple-500/10', border: 'border-purple-500/20',  text: 'text-purple-400' },
+                };
+                const info = INFO[provider];
+                if (!info) return null;
+                const tc = TIER_COLORS[info.tierColor];
+                return (
+                  <CapacityCard key={provider} info={info} tc={tc} />
+                );
+              })()}
+
+              {/* Guide button — shown for ALL providers */}
+              {(() => {
+                const guide = PROVIDER_GUIDES[provider];
+                if (!guide) return null;
+                return (
+                  <motion.button
+                    key={provider}
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.2 }}
+                    whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.98 }}
+                    onClick={() => setShowApiGuide(true)}
+                    className="w-full mb-4 flex items-center gap-3 px-4 py-3 rounded-xl border border-amber-500/25 bg-amber-500/8 hover:bg-amber-500/12 hover:border-amber-500/40 transition-all duration-200 group"
+                  >
+                    <span className="text-xl">{guide.icon}</span>
+                    <div className="text-left flex-1">
+                      <p className="text-amber-300 text-sm font-semibold group-hover:text-amber-200 transition-colors">
+                        How to get your {guide.name} API key?
+                      </p>
+                      <p className="text-white/30 text-xs mt-0.5">
+                        Step-by-step guide · {guide.steps.length} steps · {guide.isFree ? '🆓 Free' : '💳 Paid'}
+                      </p>
+                    </div>
+                    <div className="w-7 h-7 rounded-lg bg-amber-500/15 flex items-center justify-center flex-shrink-0 group-hover:bg-amber-500/25 transition-colors">
+                      <span className="text-amber-400 text-xs font-bold">{guide.steps.length}</span>
+                    </div>
+                  </motion.button>
+                );
+              })()}
 
               {/* API key input row */}
               <div className="relative">
@@ -634,7 +1062,12 @@ export default function UploadPage({ analysis, apiKey, setApiKey, provider, setP
 
           {/* API Guide Modal */}
           <AnimatePresence>
-            {showApiGuide && <ApiKeyGuideModal onClose={() => setShowApiGuide(false)} />}
+            {showApiGuide && <ApiKeyGuideModal onClose={() => setShowApiGuide(false)} provider={provider} />}
+          </AnimatePresence>
+
+          {/* Platform Export Guide Modal */}
+          <AnimatePresence>
+            {showPlatformGuide && <PlatformGuideModal onClose={() => setShowPlatformGuide(false)} platform={platform} />}
           </AnimatePresence>
 
           {/* ── Analyze Button ───────────────────────────────── */}

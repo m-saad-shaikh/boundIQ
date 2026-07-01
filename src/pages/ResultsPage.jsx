@@ -16,6 +16,7 @@ import {
   Key, Brain, Lightbulb, BookOpen,
 } from 'lucide-react';
 import ExportButton from '../components/common/ExportButton.jsx';
+import BondIQLogo from '../components/common/BondIQLogo.jsx';
 
 import RelationshipScore    from '../components/analysis/RelationshipScore.jsx';
 import RelationshipStatus   from '../components/analysis/RelationshipStatus.jsx';
@@ -32,6 +33,7 @@ import ErrorBoundary        from '../components/common/ErrorBoundary.jsx';
 
 const AIInsights        = lazy(() => import('../components/analysis/AIInsights.jsx'));
 const Recommendations   = lazy(() => import('../components/analysis/Recommendations.jsx'));
+const AIChatCoach       = lazy(() => import('../components/analysis/AIChatCoach.jsx'));
 const LeaderboardPreview= lazy(() => import('../components/analysis/LeaderboardPreview.jsx'));
 
 // ── Loading skeleton ──────────────────────────────────────────────────────────
@@ -102,7 +104,7 @@ function Section({ children, delay = 0 }) {
 }
 
 // ── Main ResultsPage ──────────────────────────────────────────────────────────
-export default function ResultsPage({ analysis }) {
+export default function ResultsPage({ analysis, apiKey, provider }) {
   const navigate = useNavigate();
   const [isShareModalOpen,   setIsShareModalOpen]   = useState(false);
   const [leaderboardRefresh, setLeaderboardRefresh] = useState(0);
@@ -150,13 +152,7 @@ export default function ResultsPage({ analysis }) {
           <ArrowLeft size={16} /> New Analysis
         </button>
 
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center"
-               style={{ background: 'linear-gradient(135deg, #ff2d78, #8b5cf6)' }}>
-            <Heart size={14} className="text-white" fill="white" />
-          </div>
-          <span className="font-display font-bold text-white text-sm tracking-tight hidden sm:block uppercase">BondIQ</span>
-        </div>
+        <BondIQLogo size={32} textSize="sm" />
 
         <div className="flex gap-2">
           <ExportButton targetId="report" filename={`BondIQ-Report-${p1}-${p2}.pdf`} />
@@ -308,6 +304,24 @@ export default function ResultsPage({ analysis }) {
               </Suspense>
             </ErrorBoundary>
           </Section>
+
+          {/* ── AI Chat Coach (only when AI was used) ── */}
+          {aiUsed && (
+            <Section delay={0.5}>
+              <ErrorBoundary>
+                <Suspense fallback={<Skeleton className="h-64 w-full" />}>
+                  <div className="mb-6">
+                    <AIChatCoach
+                      aiResult={aiResult}
+                      localStats={localStats}
+                      provider={provider}
+                      apiKey={apiKey}
+                    />
+                  </div>
+                </Suspense>
+              </ErrorBoundary>
+            </Section>
+          )}
 
           {/* Competition & Leaderboard */}
           <Section delay={0.5}>

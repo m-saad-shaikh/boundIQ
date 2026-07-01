@@ -11,12 +11,15 @@ export async function analyzeWithGroq({ messages, statsSummary, participants, ap
     throw new Error('A valid Groq API key is required.');
   }
 
-  const sampled    = buildRepresentativeSample(messages);
+  // Groq free tier: ~6,000 tokens/min limit.
+  // Budget = 6,000 chars (~1,500 tokens) for chat sample; rest goes to prompt overhead.
+  const sampled    = buildRepresentativeSample(messages, 6000);
   const chatSample = formatChatSample(sampled, messages.length);
   const prompt     = buildPrompt(chatSample, statsSummary, participants);
 
   const requestBody = {
-    model: 'llama-3.3-70b-versatile',
+    // llama-3.1-8b-instant: 14,400 TPM on free tier (vs 6,000 for 70b)
+    model: 'llama-3.1-8b-instant',
     messages: [
       { role: 'system', content: 'You are an empathetic relationship analyst.' },
       { role: 'user', content: prompt }

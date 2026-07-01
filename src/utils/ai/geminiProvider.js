@@ -21,7 +21,9 @@ export async function analyzeWithGemini({ messages, statsSummary, participants, 
   const { GoogleGenerativeAI } = await import('@google/generative-ai');
   const genAI = new GoogleGenerativeAI(apiKey.trim());
 
-  const sampled    = buildRepresentativeSample(messages);
+  // Gemini free tier: 1M token context, 15 RPM.
+  // Budget = 80,000 chars (~20,000 tokens) — plenty of headroom.
+  const sampled    = buildRepresentativeSample(messages, 80000);
   const chatSample = formatChatSample(sampled, messages.length);
   const prompt     = buildPrompt(chatSample, statsSummary, participants);
 

@@ -83,8 +83,36 @@ export async function exportToPDF(elementId, filename = 'relationship-report.pdf
       heightLeft -= pdfHeight;
     }
 
-    // 5. Finalize download
-    pdf.save(filename);
+    // 5. Finalize — Capacitor/mobile safe download
+    // In Android WebView, pdf.save() (which uses <a>.click()) is blocked.
+    // Instead, output as blob and use Web Share API if available, else fallback.
+    const pdfBlob = pdf.output('blob');
+    const pdfFilename = filename;
+
+    if (navigator.canShare && navigator.canShare({ files: [new File([pdfBlob], pdfFilename, { type: 'application/pdf' })] })) {
+      // Mobile / Capacitor: share sheet
+      try {
+        await navigator.share({
+          files: [new File([pdfBlob], pdfFilename, { type: 'application/pdf' })],
+          title: 'BondIQ Report',
+          text: 'Your BondIQ Relationship Report',
+        });
+      } catch (shareErr) {
+        // User cancelled — not an error
+        console.log('[BondIQ] PDF share cancelled:', shareErr);
+      }
+    } else {
+      // Web browser fallback: anchor download
+      const blobUrl = URL.createObjectURL(pdfBlob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = pdfFilename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(blobUrl);
+    }
+
     return true;
     
   } catch (err) {

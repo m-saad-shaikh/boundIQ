@@ -11,6 +11,7 @@ import { motion } from 'framer-motion';
 import { Heart, Share2, AlertTriangle, RotateCcw, ExternalLink } from 'lucide-react';
 import { getShare } from '../utils/supabaseClient.js';
 import { getRankInfo } from '../components/analysis/RankBadge.jsx';
+import BondIQLogo from '../components/common/BondIQLogo.jsx';
 
 // ── Loading skeleton ──────────────────────────────────────────────────────────
 function Skeleton({ className }) {
@@ -42,15 +43,7 @@ function ShareCard({ data }) {
 
         <div className="relative z-10 flex flex-col items-center text-center gap-6">
           {/* Brand */}
-          <div className="flex items-center gap-2">
-            <div
-              className="w-7 h-7 rounded-lg flex items-center justify-center"
-              style={{ background: 'linear-gradient(135deg, #ff2d78, #8b5cf6)' }}
-            >
-              <Heart size={13} className="text-white" fill="white" />
-            </div>
-            <span className="font-display font-bold text-white/60 text-xs tracking-widest uppercase">BondIQ</span>
-          </div>
+          <BondIQLogo size={28} textSize="sm" />
 
           {/* Rank icon */}
           <motion.div
@@ -154,15 +147,7 @@ export default function SharePage() {
         className="relative z-10 flex items-center justify-between px-6 md:px-12 py-5 border-b border-white/5"
         style={{ background: 'rgba(5,5,16,0.8)', backdropFilter: 'blur(20px)' }}
       >
-        <div className="flex items-center gap-2">
-          <div
-            className="w-8 h-8 rounded-lg flex items-center justify-center"
-            style={{ background: 'linear-gradient(135deg, #ff2d78, #8b5cf6)' }}
-          >
-            <Heart size={14} className="text-white" fill="white" />
-          </div>
-          <span className="font-display font-bold text-white text-sm tracking-tight uppercase">BondIQ</span>
-        </div>
+        <BondIQLogo size={32} textSize="sm" />
 
         <motion.button
           whileHover={{ scale: 1.03 }}

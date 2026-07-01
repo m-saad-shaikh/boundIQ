@@ -11,7 +11,9 @@ export async function analyzeWithOpenRouter({ messages, statsSummary, participan
     throw new Error('A valid OpenRouter API key is required.');
   }
 
-  const sampled    = buildRepresentativeSample(messages);
+  // OpenRouter (gemini-2.5-flash): 1M token context.
+  // Budget = 80,000 chars (~20,000 tokens).
+  const sampled    = buildRepresentativeSample(messages, 80000);
   const chatSample = formatChatSample(sampled, messages.length);
   const prompt     = buildPrompt(chatSample, statsSummary, participants);
 

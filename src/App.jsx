@@ -4,13 +4,18 @@
  */
 
 import { useState } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import LandingPage   from './pages/LandingPage.jsx';
 import UploadPage    from './pages/UploadPage.jsx';
 import ResultsPage   from './pages/ResultsPage.jsx';
 import SharePage     from './pages/SharePage.jsx';
 import { useAnalysis } from './hooks/useAnalysis.js';
 import { AuthProvider } from './contexts/AuthContext.jsx';
+
+// Use HashRouter in Capacitor APK (file:// protocol doesn't support browser history)
+// Use BrowserRouter on web (normal URL routing)
+const isCapacitor = window.location.protocol === 'capacitor:' || window.location.protocol === 'file:';
+const Router = isCapacitor ? HashRouter : BrowserRouter;
 
 // ── localStorage key for API key persistence (Task 8) ─────────────────────────
 const STORAGE_KEY_API = 'bondiq_gemini_api_key';
@@ -53,7 +58,7 @@ export default function App() {
 
   return (
     <AuthProvider>
-      <BrowserRouter>
+      <Router>
         <Routes>
           <Route path="/" element={<LandingPage />} />
 
@@ -74,7 +79,7 @@ export default function App() {
             path="/results"
             element={
               analysis.isDone
-                ? <ResultsPage analysis={analysis} />
+                ? <ResultsPage analysis={analysis} apiKey={apiKey} provider={provider} />
                 : <Navigate to="/analyze" replace />
             }
           />
@@ -84,7 +89,7 @@ export default function App() {
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
-      </BrowserRouter>
+      </Router>
     </AuthProvider>
   );
 }

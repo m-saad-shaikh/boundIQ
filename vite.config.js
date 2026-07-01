@@ -9,13 +9,15 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
       manifest: {
-        name: 'BondIQ AI Relationship Analyzer',
+        name: 'BondIQ — AI Relationship Intelligence',
         short_name: 'BondIQ',
-        description: 'Futuristic AI-powered relationship intelligence platform.',
+        description: 'AI-powered emotional relationship intelligence. Analyze your conversations and uncover deep relationship insights.',
         theme_color: '#050510',
         background_color: '#050510',
         display: 'standalone',
         orientation: 'portrait',
+        start_url: '/',
+        scope: '/',
         icons: [
           {
             src: 'pwa-192x192.png',

@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import { Heart, Sparkles, Shield, Zap, Brain, MessageCircle, ChevronDown } from 'lucide-react';
 import { useRef } from 'react';
+import BondIQLogo from '../components/common/BondIQLogo.jsx';
 
 // ── Particle Background ───────────────────────────────────────────────────────
 function Particles() {
@@ -163,13 +164,7 @@ export default function LandingPage() {
         transition={{ duration: 0.6 }}
         className="relative z-10 flex items-center justify-between px-6 md:px-12 py-6"
       >
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center"
-               style={{ background: 'linear-gradient(135deg, #ff2d78, #8b5cf6)' }}>
-            <Heart size={16} className="text-white" fill="white" />
-          </div>
-          <span className="font-display font-bold text-white text-lg">BondIQ</span>
-        </div>
+        <BondIQLogo size={36} textSize="md" />
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
@@ -357,9 +352,8 @@ export default function LandingPage() {
       {/* ── Footer ────────────────────────────────────────── */}
       <footer className="relative z-10 border-t border-white/5 px-6 md:px-12 py-8">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 max-w-6xl mx-auto">
-          <div className="flex items-center gap-2">
-            <Heart size={14} className="text-pink-400" fill="currentColor" />
-            <span className="font-display font-bold text-white/60 text-sm">BondIQ</span>
+          <div className="opacity-70 hover:opacity-100 transition-opacity">
+            <BondIQLogo size={24} textSize="sm" />
           </div>
           <p className="text-white/20 text-xs">Made with ❤️ by <span className="text-white/40 font-semibold">M SAAD SHAIKH</span></p>
         </div>

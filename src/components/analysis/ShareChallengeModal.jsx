@@ -80,10 +80,35 @@ export default function ShareChallengeModal({ isOpen, onClose, score, participan
         scale: 2,
         useCORS: true,
       });
-      const link = document.createElement('a');
-      link.download = `BondIQ-Challenge-${p1}-${p2}.png`;
-      link.href = canvas.toDataURL('image/png');
-      link.click();
+
+      const filename = `BondIQ-Challenge-${p1}-${p2}.png`;
+
+      // Capacitor / mobile: use Web Share API with blob (works in WebView)
+      canvas.toBlob(async (blob) => {
+        if (blob && navigator.canShare && navigator.canShare({ files: [new File([blob], filename, { type: 'image/png' })] })) {
+          try {
+            await navigator.share({
+              files: [new File([blob], filename, { type: 'image/png' })],
+              title: 'BondIQ Challenge',
+              text: `Our relationship scored ${score}%!`,
+            });
+          } catch (shareErr) {
+            // User cancelled share — not an error
+            console.log('[BondIQ] Share cancelled:', shareErr);
+          }
+        } else {
+          // Web browser fallback: anchor download
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.download = filename;
+          link.href = url;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+        }
+      }, 'image/png');
+
     } catch (err) {
       console.error('[BondIQ] Failed to generate image:', err);
     }
@@ -91,8 +116,10 @@ export default function ShareChallengeModal({ isOpen, onClose, score, participan
   };
 
   const handleWhatsAppShare = () => {
-    const url = shareUrl || window.location.href;
-    const text = `Our relationship scored ${score}% (${rank.name}) on BondIQ! 🔥 ${url}`;
+    // Always use production URL — never localhost
+    const appBase = import.meta.env.VITE_APP_URL?.replace(/\/$/, '') || window.location.origin;
+    const url = shareUrl || `${appBase}`;
+    const text = `Our relationship scored ${score}% (${rank.name}) on BondIQ! 🔥 Check it out: ${url}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
   };
 
