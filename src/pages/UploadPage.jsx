@@ -14,6 +14,7 @@ import {
   Upload, FileText, Clipboard, Heart, ArrowLeft, Sparkles,
   Eye, EyeOff, Key, AlertCircle, CheckCircle2, MessageSquare,
   X, ExternalLink, Copy, CheckCheck, Wifi, WifiOff, Trash2, Loader2, ChevronDown,
+  Shield, Lock, Monitor, Server, Github, Terminal,
 } from 'lucide-react';
 import LoadingScreen from '../components/analysis/LoadingScreen.jsx';
 import ParticipantConfirm from '../components/analysis/ParticipantConfirm.jsx';
@@ -507,6 +508,82 @@ function CapacityCard({ info, tc }) {
         )}
       </AnimatePresence>
     </motion.div>
+  );
+}
+
+// ── Verify It Yourself Panel ───────────────────────────────────────────────────
+function VerifyPanel() {
+  const [open, setOpen] = useState(false);
+  const steps = [
+    { n: '1', icon: '🖥️', title: 'Open Browser DevTools', desc: 'Press F12 (Windows/Linux) or Cmd+Option+I (Mac) to open developer tools.' },
+    { n: '2', icon: '📡', title: 'Go to the Network tab', desc: 'Click the "Network" tab at the top of DevTools. Check "Preserve log".' },
+    { n: '3', icon: '🔍', title: 'Filter by "Fetch/XHR"', desc: 'Click the "Fetch/XHR" filter button to see only API calls.' },
+    { n: '4', icon: '📋', title: 'Paste & Analyze your chat', desc: 'Come back here, paste your chat, and click "Analyze Relationship".' },
+    { n: '5', icon: '🔎', title: 'Check the requests', desc: 'Look at every request. You will NOT see your chat text in any request body — only the AI provider call (if you entered an API key) will appear.' },
+  ];
+  return (
+    <div
+      className="rounded-xl overflow-hidden"
+      style={{ background: 'rgba(139,92,246,0.04)', border: '1px solid rgba(139,92,246,0.15)' }}
+    >
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/[0.02] transition-colors text-left"
+      >
+        <Monitor size={13} className="text-purple-400 flex-shrink-0" />
+        <div className="flex-1 min-w-0">
+          <p className="text-white/70 text-xs font-semibold">Verify it yourself — open Network tab</p>
+          <p className="text-white/25 text-[10px]">Prove to yourself that your chat never leaves your browser</p>
+        </div>
+        <motion.span animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.2 }}>
+          <ChevronDown size={13} className="text-white/25" />
+        </motion.span>
+      </button>
+
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            key="verify-body"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25, ease: 'easeInOut' }}
+            style={{ overflow: 'hidden', borderTop: '1px solid rgba(139,92,246,0.1)' }}
+          >
+            <div className="px-4 py-4 flex flex-col gap-3">
+              <p className="text-white/40 text-[10px] leading-relaxed">
+                Don&apos;t trust us — <span className="text-purple-400 font-semibold">verify yourself</span>. Follow these steps to confirm your chat data never leaves your device:
+              </p>
+              {steps.map((s, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, x: -8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.05 }}
+                  className="flex items-start gap-3"
+                >
+                  <div className="w-5 h-5 rounded-md bg-purple-500/15 border border-purple-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <span className="text-purple-300 text-[9px] font-bold">{s.n}</span>
+                  </div>
+                  <div>
+                    <p className="text-white/60 text-[11px] font-semibold">{s.icon} {s.title}</p>
+                    <p className="text-white/30 text-[10px] leading-relaxed mt-0.5">{s.desc}</p>
+                  </div>
+                </motion.div>
+              ))}
+              <div
+                className="mt-1 px-3 py-2.5 rounded-lg text-[10px] text-emerald-400/80 leading-relaxed"
+                style={{ background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.15)' }}
+              >
+                ✅ <span className="font-semibold">What you&apos;ll see:</span> Only a request to your AI provider (Gemini/Groq/etc.) if you entered an API key. The request will contain the <em>sampled</em> chat text for AI analysis only — never stored on any server.
+                <br /><br />
+                ❌ <span className="font-semibold">What you won&apos;t see:</span> Any request to BondIQ servers containing your chat. Because there isn&apos;t one.
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
 
@@ -1093,10 +1170,65 @@ export default function UploadPage({ analysis, apiKey, setApiKey, provider, setP
             </motion.div>
           )}
 
-          {/* Privacy note */}
-          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }}
-            className="text-center text-white/20 text-xs mt-4">
-            🔒 Your chat is never stored. Analysis is private and ephemeral.
+          {/* ── Trust & Privacy Section ───────────────────────── */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.65 }}
+            className="mt-8"
+          >
+            {/* Section header */}
+            <div className="flex items-center gap-2 mb-4">
+              <div className="flex-1 h-px bg-white/5" />
+              <div className="flex items-center gap-2 px-3">
+                <Shield size={12} className="text-emerald-400" />
+                <span className="text-white/30 text-[10px] font-bold uppercase tracking-widest">Privacy & Trust</span>
+              </div>
+              <div className="flex-1 h-px bg-white/5" />
+            </div>
+
+            {/* What We Can't See — guarantee grid */}
+            <div
+              className="rounded-2xl p-4 mb-3"
+              style={{ background: 'rgba(16,185,129,0.04)', border: '1px solid rgba(16,185,129,0.12)' }}
+            >
+              <p className="text-emerald-400 text-xs font-bold uppercase tracking-wider mb-3 flex items-center gap-2">
+                <Lock size={11} />
+                What We Can&apos;t See — Ever
+              </p>
+              <div className="grid grid-cols-1 gap-2">
+                {[
+                  { icon: '💬', text: 'Your chat messages', sub: 'Never sent to our servers — stays in your browser' },
+                  { icon: '🔑', text: 'Your API key', sub: 'Saved only in your browser localStorage, not our DB' },
+                  { icon: '👤', text: 'Your identity', sub: 'No account, no email, no name — completely anonymous' },
+                  { icon: '📍', text: 'Your location or IP', sub: 'No tracking, no analytics on your personal data' },
+                  { icon: '🗂️', text: 'Analysis results', sub: 'Results disappear when you close the tab' },
+                ].map((item, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.7 + i * 0.05 }}
+                    className="flex items-start gap-3 py-1.5"
+                  >
+                    <span className="text-sm mt-0.5 flex-shrink-0">{item.icon}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white/70 text-xs font-semibold">{item.text}</p>
+                      <p className="text-white/30 text-[10px] leading-relaxed">{item.sub}</p>
+                    </div>
+                    <CheckCircle2 size={13} className="text-emerald-500/60 flex-shrink-0 mt-0.5" />
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+
+            {/* Verify It Yourself — collapsible */}
+            <VerifyPanel />
+          </motion.div>
+
+          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.0 }}
+            className="text-center text-white/15 text-[10px] mt-5 mb-2">
+            🔒 Analysis is ephemeral — data vanishes when you close this tab.
           </motion.p>
         </div>
       </main>
