@@ -437,69 +437,125 @@ RELATIONSHIP DYNAMICS:
 }
 
 // ─── Build representative sample for AI providers ─────────────────────────────
-// Selects messages across 3 time zones and prioritizes emotional/long messages.
+// Selects high-signal messages across the full relationship timeline while staying
+// strictly within token/character limits for free tier AI providers.
 export function buildRepresentativeSample(messages, budgetChars = 32000) {
   if (!messages || messages.length === 0) return [];
 
   const total = messages.length;
 
-  // Score a message for "representativeness"
+  // Key emotional words (English + Roman Urdu/Hindi)
+  const CONFLICT_WORDS = /\b(sorry|apologize|forgive|maaf|galti|fight|angry|gussa|naraz|upset|hurt|leave|ignoring|ignore|rude|hate|breakup|stop|crying|tears|problem|issue)\b/i;
+  const AFFECTION_WORDS = /\b(love|pyaar|miss|missing|jaan|baby|babe|sweetheart|adore|care|forever|always|beautiful|handsome|special|heart|kiss|hug|lucky|blessed)\b/i;
+  const VULNERABLE_WORDS = /\b(feel|feeling|feelings|trust|afraid|scared|darr|honestly|truth|promise|thinking of you|need you|want you|understand|lonely)\b/i;
+  const DISMISSIVE_WORDS = /^(ok|okay|k|hmm|hm|yep|nope|sure|fine|theek|accha|acha|media omitted|image omitted|sticker omitted)$/i;
+
+  // Score a message for emotional importance & relationship signal
   const scoreMsg = (msg) => {
+    const text = (msg.text || '').trim();
+    if (!text || DISMISSIVE_WORDS.test(text)) return -2;
+
     let score = 0;
-    if (msg.text.length > 100) score += 3;       // long = higher engagement
-    else if (msg.text.length > 50) score += 1;
-    const em = scoreEmotionalWords(msg.text);
-    score += em.positive + em.negative + em.affectionate;  // emotional richness
-    if (isLateNight(msg.timestamp)) score += 2;  // late night = emotional
+    const len = text.length;
+
+    // Substantial messages indicate emotional investment
+    if (len > 140) score += 4;
+    else if (len > 60) score += 2;
+    else if (len < 10) score -= 1;
+
+    // High priority: Conflict, apology, deep emotion
+    if (CONFLICT_WORDS.test(text)) score += 5;
+    if (AFFECTION_WORDS.test(text)) score += 4;
+    if (VULNERABLE_WORDS.test(text)) score += 3;
+
+    const em = scoreEmotionalWords(text);
+    score += (em.positive + em.negative + em.affectionate);
+
+    // Late night conversations (11 PM - 4 AM) carry higher intimacy/vulnerability
+    if (isLateNight(msg.timestamp)) score += 3;
+
     return score;
   };
 
-  // Small chats: use everything
-  if (total <= 150) {
+  // Small chats: use all messages directly
+  if (total <= 120) {
     return messages.map(m => ({ ...m, text: (m.text || '').slice(0, 300) }));
   }
 
-  // Large chats: split into 3 zones
-  const z1End   = Math.floor(total * 0.33);    // first third (early relationship)
-  const z2Start = Math.floor(total * 0.42);    // middle
-  const z2End   = Math.floor(total * 0.58);
-  const z3Start = Math.floor(total * 0.67);    // last third (recent)
+  // Budget allocations across timeline:
+  // 1. Beginning Phase (First 30%): How the relationship started
+  // 2. Middle Phase (Middle 40%): How communication stabilized/shifted
+  // 3. Recent Phase (Last 30%): Present dynamic, latest issues & state
+  const z1End   = Math.floor(total * 0.30);
+  const z2Start = z1End;
+  const z2End   = Math.floor(total * 0.70);
+  const z3Start = z2End;
 
   const zones = [
-    { msgs: messages.slice(0, z1End),          weight: 0.35 },  // beginning
-    { msgs: messages.slice(z2Start, z2End),    weight: 0.20 },  // middle
-    { msgs: messages.slice(z3Start),           weight: 0.45 },  // recent (most relevant)
+    { msgs: messages.slice(0, z1End),       weight: 0.25, label: 'Beginning Phase' },
+    { msgs: messages.slice(z2Start, z2End), weight: 0.35, label: 'Middle Evolution' },
+    { msgs: messages.slice(z3Start),        weight: 0.40, label: 'Recent / Current Dynamic' },
   ];
 
-  const sampled = [];
+  const pickedIndices = new Set();
   let usedChars = 0;
 
+  // Always reserve and include the absolute latest 10 messages so recent context is 100% fresh
+  for (let i = Math.max(0, total - 10); i < total; i++) {
+    pickedIndices.add(i);
+    usedChars += ((messages[i]?.text || '').slice(0, 250).length + 50);
+  }
+
+  // Sample within each zone based on emotional weight
   for (const zone of zones) {
     if (usedChars >= budgetChars) break;
 
-    const zoneBudget = budgetChars * zone.weight;
+    const zoneBudget = (budgetChars - usedChars) * (zone.weight / (zone.weight + 0.1));
     let zoneUsed = 0;
 
-    // Sort zone by score desc, but maintain temporal order within picked set
+    // Score all messages in zone
     const scored = zone.msgs
-      .map((msg, idx) => ({ msg, idx, score: scoreMsg(msg) }))
+      .map((msg) => {
+        const absIdx = messages.indexOf(msg);
+        return { msg, absIdx, score: scoreMsg(msg) };
+      })
+      .filter(item => !pickedIndices.has(item.absIdx) && item.score > 0)
       .sort((a, b) => b.score - a.score);
 
-    // Pick top-scored messages up to budget, then re-sort by index for temporal order
-    const picked = [];
-    for (const { msg, idx } of scored) {
-      const preview = (msg.text || '').slice(0, 250);
-      const cost = preview.length + 60; // ~60 chars overhead per message
-      if (zoneUsed + cost > zoneBudget) break;
-      picked.push({ ...msg, text: preview, _origIdx: idx });
-      zoneUsed += cost;
-    }
+    for (const { msg, absIdx } of scored) {
+      if (zoneUsed > zoneBudget || usedChars >= budgetChars) break;
 
-    // Re-sort by original index to preserve chronological order
-    picked.sort((a, b) => a._origIdx - b._origIdx);
-    sampled.push(...picked);
-    usedChars += zoneUsed;
+      const preview = (msg.text || '').slice(0, 250);
+      const cost = preview.length + 50;
+
+      pickedIndices.add(absIdx);
+      zoneUsed += cost;
+      usedChars += cost;
+
+      // Dialogue pairing: If this is a high-emotion text, also pull the reply if available!
+      if (absIdx + 1 < total && !pickedIndices.has(absIdx + 1) && (usedChars + 150 < budgetChars)) {
+        const replyMsg = messages[absIdx + 1];
+        if (replyMsg && replyMsg.sender !== msg.sender) {
+          pickedIndices.add(absIdx + 1);
+          const replyCost = (replyMsg.text || '').slice(0, 200).length + 50;
+          zoneUsed += replyCost;
+          usedChars += replyCost;
+        }
+      }
+    }
   }
 
-  return sampled;
+  // Sort picked messages in exact chronological order to preserve real conversation flow
+  const sortedSample = Array.from(pickedIndices)
+    .sort((a, b) => a - b)
+    .map(idx => {
+      const m = messages[idx];
+      return {
+        ...m,
+        text: (m.text || '').slice(0, 250),
+        _origIdx: idx,
+      };
+    });
+
+  return sortedSample;
 }
