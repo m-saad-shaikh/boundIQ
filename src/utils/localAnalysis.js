@@ -354,6 +354,12 @@ export function runLocalAnalysis(messages) {
     ),
   };
 
+  // ── Recent message excerpts for contextual AI coaching ──
+  const recentMessages = messages.slice(-30).map(m => ({
+    sender: m.sender,
+    text: (m.text || '').slice(0, 300),
+  }));
+
   return {
     participants,
     totalMessages,
@@ -379,6 +385,7 @@ export function runLocalAnalysis(messages) {
     weeklyTrends,
     monthlyTrends,
     monthlyEmotions,
+    recentMessages,
   };
 }
 

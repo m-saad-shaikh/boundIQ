@@ -19,15 +19,18 @@ import {
 } from 'lucide-react';
 import { chatWithCoach } from '../../utils/ai/chatCoachProvider.js';
 
-// ─── Suggested starter questions ─────────────────────────────────────────────
-const SUGGESTED_QUESTIONS = [
-  { icon: '🤝', text: 'Should I apologize for anything?' },
-  { icon: '💬', text: 'How can I communicate better?' },
-  { icon: '📉', text: 'Why did our conversations reduce?' },
-  { icon: '❤️', text: 'How deep is our emotional connection?' },
-  { icon: '⚠️', text: 'What are the red flags in our chats?' },
-  { icon: '🌱', text: 'How can we grow closer?' },
-];
+// ─── Suggested starter questions generator ──────────────────────────────────
+function getSuggestedQuestions(otherUser) {
+  const name = otherUser || 'them';
+  return [
+    { icon: '🤔', text: `What is actually going on between me and ${name}?` },
+    { icon: '⚖️', text: `Who is putting in more effort — me or ${name}?` },
+    { icon: '⏳', text: `Why does ${name} take time to reply?` },
+    { icon: '❤️', text: `Does ${name} genuinely care about me?` },
+    { icon: '🤝', text: `Should I apologize or text ${name} first?` },
+    { icon: '🌱', text: `How can I communicate better with ${name}?` },
+  ];
+}
 
 // ─── Typing indicator ─────────────────────────────────────────────────────────
 function TypingDots() {
@@ -46,7 +49,7 @@ function TypingDots() {
 }
 
 // ─── Single chat bubble ───────────────────────────────────────────────────────
-function ChatBubble({ message, isLast }) {
+function ChatBubble({ message, isLast, activeUser }) {
   const isUser = message.role === 'user';
 
   return (
@@ -69,10 +72,10 @@ function ChatBubble({ message, isLast }) {
 
       {/* Bubble */}
       <div
-        className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+        className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
           isUser
             ? 'bg-gradient-to-br from-pink-500/20 to-purple-500/20 border border-pink-500/20 text-white/90 rounded-tr-sm'
-            : 'bg-white/[0.05] border border-white/8 text-white/80 rounded-tl-sm'
+            : 'bg-white/[0.05] border border-white/8 text-white/80 rounded-tl-sm whitespace-pre-wrap'
         }`}
       >
         {message.content}
@@ -83,6 +86,10 @@ function ChatBubble({ message, isLast }) {
 
 // ─── Main AIChatCoach component ───────────────────────────────────────────────
 export default function AIChatCoach({ aiResult, localStats, provider, apiKey }) {
+  const [p1, p2] = localStats?.participants || ['Person 1', 'Person 2'];
+  const [activeUser,  setActiveUser]  = useState(p1);
+  const otherUser = activeUser === p1 ? p2 : p1;
+
   const [messages,    setMessages]    = useState([]);
   const [input,       setInput]       = useState('');
   const [isTyping,    setIsTyping]    = useState(false);
@@ -126,6 +133,7 @@ export default function AIChatCoach({ aiResult, localStats, provider, apiKey }) 
         messages: history,
         aiResult,
         localStats,
+        activeUser,
       });
 
       setMessages(prev => [
@@ -140,7 +148,7 @@ export default function AIChatCoach({ aiResult, localStats, provider, apiKey }) 
     } finally {
       setIsTyping(false);
     }
-  }, [input, messages, isTyping, provider, apiKey, aiResult, localStats]);
+  }, [input, messages, isTyping, provider, apiKey, aiResult, localStats, activeUser]);
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -156,7 +164,7 @@ export default function AIChatCoach({ aiResult, localStats, provider, apiKey }) 
     setInput('');
   };
 
-  const [p1, p2] = localStats?.participants || ['Person 1', 'Person 2'];
+  const suggestedQuestions = getSuggestedQuestions(otherUser);
 
   return (
     <motion.div
@@ -203,7 +211,7 @@ export default function AIChatCoach({ aiResult, localStats, provider, apiKey }) 
               </div>
             </div>
             <p className="text-white/35 text-xs">
-              Ask anything about {p1} &amp; {p2}'s relationship
+              Chatting with {activeUser} • Mentoring about {otherUser}
             </p>
           </div>
         </div>
@@ -237,6 +245,40 @@ export default function AIChatCoach({ aiResult, localStats, provider, apiKey }) 
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.35, ease: 'easeInOut' }}
           >
+            {/* ── Active User Perspective Selector ── */}
+            <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 bg-white/[0.02] border-b border-white/5">
+              <div className="flex items-center gap-2 text-xs">
+                <span className="text-white/50 font-medium">I am:</span>
+                <div className="flex items-center gap-1.5 p-1 rounded-xl bg-white/[0.04] border border-white/8">
+                  <button
+                    type="button"
+                    onClick={() => { setActiveUser(p1); resetChat(); }}
+                    className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                      activeUser === p1
+                        ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-md'
+                        : 'text-white/50 hover:text-white hover:bg-white/5'
+                    }`}
+                  >
+                    👤 {p1}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setActiveUser(p2); resetChat(); }}
+                    className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                      activeUser === p2
+                        ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-md'
+                        : 'text-white/50 hover:text-white hover:bg-white/5'
+                    }`}
+                  >
+                    👤 {p2}
+                  </button>
+                </div>
+              </div>
+              <span className="text-[11px] text-white/40">
+                AI Coach is on <strong className="text-purple-300 font-semibold">{activeUser}</strong>'s side
+              </span>
+            </div>
+
             {/* Messages area */}
             <div
               ref={messagesRef}
@@ -248,22 +290,24 @@ export default function AIChatCoach({ aiResult, localStats, provider, apiKey }) 
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="text-center py-2"
+                  className="text-center py-4"
                 >
                   <div className="w-14 h-14 rounded-2xl mx-auto mb-3 flex items-center justify-center"
                        style={{ background: 'linear-gradient(135deg, rgba(139,92,246,0.2), rgba(6,182,212,0.1))', border: '1px solid rgba(139,92,246,0.2)' }}>
                     <Lightbulb size={22} className="text-purple-400" />
                   </div>
-                  <p className="text-white/50 text-sm mb-1">Your personal relationship advisor</p>
-                  <p className="text-white/25 text-xs">
-                    Based on the full analysis of {p1} &amp; {p2}'s conversation
+                  <p className="text-white/90 text-sm font-semibold mb-1">
+                    Hey {activeUser}! I'm your Relationship Coach.
+                  </p>
+                  <p className="text-white/40 text-xs max-w-md mx-auto leading-relaxed">
+                    I have analyzed your conversation with <strong className="text-white/60">{otherUser}</strong>. Ask me what's actually happening, why they reacted that way, or what you should do next.
                   </p>
                 </motion.div>
               )}
 
               {/* Chat messages */}
               {messages.map((msg, i) => (
-                <ChatBubble key={i} message={msg} isLast={i === messages.length - 1} />
+                <ChatBubble key={i} message={msg} isLast={i === messages.length - 1} activeUser={activeUser} />
               ))}
 
               {/* Typing indicator */}
@@ -303,10 +347,10 @@ export default function AIChatCoach({ aiResult, localStats, provider, apiKey }) 
               <div className="px-5 pb-4">
                 <p className="text-white/25 text-xs uppercase tracking-widest mb-3 flex items-center gap-2">
                   <Lightbulb size={11} className="text-purple-400" />
-                  Suggested Questions
+                  Suggested Questions for {activeUser}
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  {SUGGESTED_QUESTIONS.map((q, i) => (
+                  {suggestedQuestions.map((q, i) => (
                     <motion.button
                       key={i}
                       initial={{ opacity: 0, scale: 0.9 }}

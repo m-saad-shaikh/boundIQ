@@ -7,8 +7,11 @@
 import { withTimeout } from './promptHelper.js';
 
 // ─── Build the system prompt ──────────────────────────────────────────────────
-function buildCoachSystemPrompt(aiResult, localStats) {
+function buildCoachSystemPrompt(aiResult, localStats, activeUser) {
   const [p1, p2] = localStats?.participants || ['Person 1', 'Person 2'];
+  const user = activeUser || p1;
+  const partner = user === p1 ? p2 : p1;
+
   const score    = aiResult?.relationshipScore || 70;
   const status   = aiResult?.relationshipStatus || 'Growing Bond';
   const story    = aiResult?.aiStory || '';
@@ -17,57 +20,79 @@ function buildCoachSystemPrompt(aiResult, localStats) {
   const moments  = (aiResult?.keyMoments || []).join('\n- ');
   const recs     = (aiResult?.recommendations || []).join('\n- ');
 
-  return `You are BondIQ's empathetic AI Chat Coach — a warm, emotionally intelligent relationship advisor.
+  // Detailed statistics
+  const totalMsgs = localStats?.totalMessages || 0;
+  const userStats = localStats?.stats?.[user] || {};
+  const partnerStats = localStats?.stats?.[partner] || {};
+  const userDelay = localStats?.avgReplyDelay?.[user] != null ? `${localStats.avgReplyDelay[user]} mins` : 'N/A';
+  const partnerDelay = localStats?.avgReplyDelay?.[partner] != null ? `${localStats.avgReplyDelay[partner]} mins` : 'N/A';
+  const userInitiation = localStats?.initiationFrequency?.[user] != null ? `${localStats.initiationFrequency[user]}%` : '50%';
+  const partnerInitiation = localStats?.initiationFrequency?.[partner] != null ? `${localStats.initiationFrequency[partner]}%` : '50%';
+  const userDry = localStats?.dryTextingScore?.[user] != null ? `${localStats.dryTextingScore[user]}/100` : 'N/A';
+  const partnerDry = localStats?.dryTextingScore?.[partner] != null ? `${localStats.dryTextingScore[partner]}/100` : 'N/A';
 
-You have access to the full analysis of a conversation between "${p1}" and "${p2}".
+  // Recent actual message snippets for pinpoint accuracy
+  const recentExcerpts = (localStats?.recentMessages || [])
+    .slice(-25)
+    .map(m => `[${m.sender}]: ${m.text}`)
+    .join('\n');
 
-=== RELATIONSHIP ANALYSIS CONTEXT ===
-Relationship Score: ${score}/100
-Status: ${status}
-Emotional Story: ${story}
+  return `You are BondIQ's empathetic, insightful AI Relationship Coach.
 
-Emotional Profile:
-- Overall Tone: ${profile.overall || 'N/A'}
-- Affection Level: ${profile.affectionLevel || 'N/A'}
-- Conflict Level: ${profile.conflictLevel || 'N/A'}
-- Support Level: ${profile.supportLevel || 'N/A'}
-- ${p1}'s Tone: ${profile.p1Tone || 'N/A'}
-- ${p2}'s Tone: ${profile.p2Tone || 'N/A'}
+=== USER PERSPECTIVE & IDENTITY (CRITICAL) ===
+- The person chatting with you RIGHT NOW is: "${user}"
+- Their partner / friend they are discussing is: "${partner}"
+- When "${user}" says "I", "me", "my", or asks "Should I...", "What should I do?", "Did I do something wrong?", they are talking about THEMSELVES ("${user}").
+- When they mention "${partner}", or "they/he/she", they mean "${partner}".
+- ALWAYS address the user directly as "you" ("${user}") and speak about "${partner}" by their name!
+- NEVER mix up who is who! You are coaching ${user} on their relationship with ${partner}.
+- If ${user} speaks or asks in Hindi or Hinglish (e.g., "kya baat hai?", "mujhe kya karna chahiye?"), reply in warm, natural conversational Hinglish/Hindi! If in English, reply in English!
 
-Communication Insights:
-- ${insights || 'N/A'}
+=== VERIFIED RELATIONSHIP METRICS ===
+- Relationship Health Score: ${score}/100 (${status})
+- Total Messages Analyzed: ${totalMsgs}
+- Message Count: You (${user}) sent ${userStats.messageCount || 0} msgs | ${partner} sent ${partnerStats.messageCount || 0} msgs
+- Initiation Frequency: You start ${userInitiation} of chats | ${partner} starts ${partnerInitiation}
+- Average Reply Speed: You take ~${userDelay} | ${partner} takes ~${partnerDelay}
+- Text Warmth (Dry Texting Score, higher is warmer): You: ${userDry} | ${partner}: ${partnerDry}
+- Overall Emotional Tone: ${profile.overall || 'N/A'}
+- Affection Level: ${profile.affectionLevel || 'N/A'} | Conflict Level: ${profile.conflictLevel || 'N/A'}
+- ${user}'s Detected Tone: ${user === p1 ? profile.p1Tone : profile.p2Tone || 'N/A'}
+- ${partner}'s Detected Tone: ${partner === p1 ? profile.p1Tone : profile.p2Tone || 'N/A'}
 
-Key Moments Detected:
-- ${moments || 'N/A'}
+=== KEY INSIGHTS & STORY ===
+${story ? `Story: ${story}` : ''}
+${insights ? `Insights:\n- ${insights}` : ''}
+${moments ? `Key Moments:\n- ${moments}` : ''}
+${recs ? `Recommendations:\n- ${recs}` : ''}
 
-Recommendations:
-- ${recs || 'N/A'}
-=== END OF CONTEXT ===
+=== RECENT REAL CONVERSATION EXCERPTS ===
+${recentExcerpts || 'No recent raw excerpts available'}
+========================================
 
-Your role as Chat Coach:
-- Answer questions specifically about THIS relationship and its analysis
-- Be warm, non-judgmental, and emotionally supportive
-- Give practical, actionable advice
-- Refer to ${p1} and ${p2} by name when relevant
-- Keep answers concise (2-4 paragraphs max) but rich and empathetic
-- Use the analysis data to support your answers
-- Never reveal raw JSON or technical data — translate it into human language
-- If asked something unrelated to the relationship, gently redirect back`;
+=== COACHING INSTRUCTIONS ===
+1. ACCURACY: Base your analysis directly on the real numbers, tone, and chat excerpts above. Explain the REAL dynamic honestly — if ${partner} is being distant, or if ${user} is overthinking, point it out gently with evidence.
+2. PERSPECTIVE: Stand in ${user}'s corner as a trusted, emotionally mature mentor who wants the healthiest outcome for them.
+3. LANGUAGE: Match ${user}'s language naturally (Hinglish/Hindi/English).
+4. LENGTH: 2-3 focused paragraphs with practical, real-world advice and actionable next steps.`;
 }
 
 // ─── Call Gemini ──────────────────────────────────────────────────────────────
-async function callGemini(apiKey, messages) {
+async function callGemini(apiKey, systemPrompt, messages) {
   const { GoogleGenerativeAI } = await import('@google/generative-ai');
   const genAI = new GoogleGenerativeAI(apiKey.trim());
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
-
-  const chat = model.startChat({
-    history: messages.slice(0, -1).map(m => ({
-      role: m.role === 'user' ? 'user' : 'model',
-      parts: [{ text: m.content }],
-    })),
+  const model = genAI.getGenerativeModel({
+    model: 'gemini-2.0-flash',
+    systemInstruction: systemPrompt,
   });
 
+  const previousTurns = messages.slice(0, -1);
+  const history = previousTurns.map(m => ({
+    role: m.role === 'user' ? 'user' : 'model',
+    parts: [{ text: m.content }],
+  }));
+
+  const chat = model.startChat({ history });
   const lastMsg = messages[messages.length - 1];
   const result  = await chat.sendMessage(lastMsg.content);
   return result.response.text();
@@ -150,23 +175,17 @@ async function callClaude(apiKey, systemPrompt, messages) {
  * @param {object} opts.aiResult  - Full AI analysis result
  * @param {object} opts.localStats- Local statistics
  */
-export async function chatWithCoach({ provider, apiKey, messages, aiResult, localStats }) {
+export async function chatWithCoach({ provider, apiKey, messages, aiResult, localStats, activeUser }) {
   if (!apiKey || apiKey.trim().length < 10) {
     throw new Error('A valid API key is required for Chat Coach.');
   }
 
-  const systemPrompt = buildCoachSystemPrompt(aiResult, localStats);
+  const systemPrompt = buildCoachSystemPrompt(aiResult, localStats, activeUser);
 
   try {
     switch (provider) {
       case 'gemini': {
-        // For Gemini, prepend system prompt to first user message
-        const withSystem = messages.map((m, i) =>
-          i === 0 && m.role === 'user'
-            ? { ...m, content: `${systemPrompt}\n\n---\n\n${m.content}` }
-            : m
-        );
-        return await callGemini(apiKey, withSystem);
+        return await callGemini(apiKey, systemPrompt, messages);
       }
 
       case 'groq':
