@@ -3,26 +3,41 @@
  * Shows detected chat participants before analysis begins.
  * Allows manual correction if detection is wrong.
  * Task 5 requirement.
+ * Updated: Better UX — click name to edit, auto-select, clear button, inline hints.
  */
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Users, Edit3, Check, ChevronRight, MessageSquare, BarChart2 } from 'lucide-react';
+import { Users, Edit3, Check, ChevronRight, MessageSquare, X } from 'lucide-react';
 
 export default function ParticipantConfirm({ participantStats, onConfirm, onCancel }) {
   // participantStats = [{ name, count, pct }, ...]
   const top = participantStats.slice(0, 2);
 
   // Editable name state
-  const [names, setNames] = useState(top.map(p => p.name));
+  const [names,   setNames]   = useState(top.map(p => p.name));
   const [editing, setEditing] = useState([false, false]);
+  const inputRefs = [useRef(null), useRef(null)];
 
   const handleNameChange = (idx, val) => {
     setNames(prev => { const n = [...prev]; n[idx] = val; return n; });
   };
 
-  const toggleEdit = (idx) => {
-    setEditing(prev => { const e = [...prev]; e[idx] = !e[idx]; return e; });
+  const openEdit = (idx) => {
+    setEditing(prev => { const e = [...prev]; e[idx] = true; return e; });
+    // auto-select text after next render
+    setTimeout(() => {
+      inputRefs[idx].current?.select();
+    }, 50);
+  };
+
+  const closeEdit = (idx) => {
+    setEditing(prev => { const e = [...prev]; e[idx] = false; return e; });
+  };
+
+  const clearName = (idx) => {
+    setNames(prev => { const n = [...prev]; n[idx] = ''; return n; });
+    inputRefs[idx].current?.focus();
   };
 
   const handleConfirm = () => {
@@ -31,6 +46,7 @@ export default function ParticipantConfirm({ participantStats, onConfirm, onCanc
   };
 
   const totalMessages = participantStats.reduce((s, p) => s + p.count, 0);
+  const canConfirm = names[0]?.trim().length > 0 && names[1]?.trim().length > 0;
 
   return (
     <motion.div
@@ -49,6 +65,7 @@ export default function ParticipantConfirm({ participantStats, onConfirm, onCanc
           <p className="text-white text-sm font-semibold">Participants Detected</p>
           <p className="text-white/30 text-xs">
             Found {participantStats.length} senders · {totalMessages.toLocaleString()} messages
+            <span className="text-purple-400/60 ml-2">· Tap a name to edit ✏️</span>
           </p>
         </div>
       </div>
@@ -74,36 +91,63 @@ export default function ParticipantConfirm({ participantStats, onConfirm, onCanc
             </div>
 
             <div className="flex-1 min-w-0">
-              {/* Editable name */}
+              {/* Editable name — click to edit */}
               {editing[idx] ? (
-                <input
-                  autoFocus
-                  type="text"
-                  value={names[idx]}
-                  onChange={e => handleNameChange(idx, e.target.value)}
-                  onBlur={() => toggleEdit(idx)}
-                  onKeyDown={e => e.key === 'Enter' && toggleEdit(idx)}
-                  className="w-full bg-transparent text-white text-sm font-semibold outline-none border-b border-purple-500/40 pb-0.5"
-                  maxLength={30}
-                />
+                <div className="relative flex items-center">
+                  <input
+                    ref={inputRefs[idx]}
+                    autoFocus
+                    type="text"
+                    value={names[idx]}
+                    onChange={e => handleNameChange(idx, e.target.value)}
+                    onBlur={() => closeEdit(idx)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') closeEdit(idx);
+                      if (e.key === 'Escape') { handleNameChange(idx, top[idx].name); closeEdit(idx); }
+                    }}
+                    className="w-full bg-transparent text-white text-sm font-semibold outline-none border-b border-purple-500/50 pb-0.5 pr-6"
+                    maxLength={30}
+                    placeholder="Enter name…"
+                  />
+                  {names[idx] && (
+                    <button
+                      onMouseDown={e => { e.preventDefault(); clearName(idx); }}
+                      className="absolute right-0 text-white/30 hover:text-white/60"
+                    >
+                      <X size={12} />
+                    </button>
+                  )}
+                </div>
               ) : (
-                <p className="text-white text-sm font-semibold truncate">{names[idx]}</p>
+                <button
+                  onClick={() => openEdit(idx)}
+                  className="text-white text-sm font-semibold truncate text-left w-full hover:text-purple-300 transition-colors group flex items-center gap-1.5"
+                  title="Click to edit name"
+                >
+                  {names[idx] || <span className="text-white/30 italic">Enter name…</span>}
+                  <Edit3 size={10} className="text-white/20 group-hover:text-purple-400 transition-colors flex-shrink-0" />
+                </button>
               )}
               {/* Message stats */}
               <div className="flex items-center gap-2 mt-0.5">
                 <MessageSquare size={10} className="text-white/25" />
                 <span className="text-white/30 text-xs">{p.count} messages · {p.pct}%</span>
               </div>
+              {/* Inline validation */}
+              {!names[idx]?.trim() && (
+                <p className="text-red-400/70 text-[10px] mt-0.5">Name cannot be empty</p>
+              )}
             </div>
 
-            {/* Edit button */}
+            {/* Edit/Done button */}
             <button
-              onClick={() => toggleEdit(idx)}
+              onClick={() => editing[idx] ? closeEdit(idx) : openEdit(idx)}
               className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors flex-shrink-0 ${
                 editing[idx]
                   ? 'bg-emerald-500/20 text-emerald-400'
                   : 'bg-white/5 text-white/30 hover:text-white hover:bg-white/10'
               }`}
+              title={editing[idx] ? 'Save name' : 'Edit name'}
             >
               {editing[idx] ? <Check size={12} /> : <Edit3 size={12} />}
             </button>
@@ -113,7 +157,7 @@ export default function ParticipantConfirm({ participantStats, onConfirm, onCanc
         {/* Others note */}
         {participantStats.length > 2 && (
           <p className="text-white/25 text-xs px-1">
-            + {participantStats.length - 2} other sender{participantStats.length > 3 ? 's' : ''} detected (filtered out)
+            + {participantStats.length - 2} other sender{participantStats.length > 3 ? 's' : ''} detected (filtered out as minor participants)
           </p>
         )}
       </div>
@@ -127,10 +171,10 @@ export default function ParticipantConfirm({ participantStats, onConfirm, onCanc
           Go Back
         </button>
         <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
+          whileHover={canConfirm ? { scale: 1.02 } : {}}
+          whileTap={canConfirm ? { scale: 0.98 } : {}}
           onClick={handleConfirm}
-          disabled={!names[0]?.trim() || !names[1]?.trim()}
+          disabled={!canConfirm}
           className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed"
           style={{ background: 'linear-gradient(135deg, #8b5cf6, #ff2d78)' }}
         >
@@ -141,3 +185,4 @@ export default function ParticipantConfirm({ participantStats, onConfirm, onCanc
     </motion.div>
   );
 }
+

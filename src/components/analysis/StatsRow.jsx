@@ -118,10 +118,19 @@ export default function StatsRow({ localStats }) {
   } = localStats;
 
   // Best average reply delay (fastest replier's speed)
-  const d1 = parseFloat(avgReplyDelay?.[p1] ?? 0);
-  const d2 = parseFloat(avgReplyDelay?.[p2] ?? 0);
-  const bestReplyDelay = Math.min(d1 > 0 ? d1 : Infinity, d2 > 0 ? d2 : Infinity);
-  const displayDelay = isFinite(bestReplyDelay) ? Math.round(bestReplyDelay) : 0;
+  const d1 = avgReplyDelay?.[p1];
+  const d2 = avgReplyDelay?.[p2];
+  const d1Val = (d1 != null && d1 > 0) ? d1 : Infinity;
+  const d2Val = (d2 != null && d2 > 0) ? d2 : Infinity;
+  const bestReplyDelay = Math.min(d1Val, d2Val);
+  // Display: '< 1' for sub-minute, '—' for no data, otherwise rounded number
+  const displayDelay = isFinite(bestReplyDelay)
+    ? (bestReplyDelay < 1 ? 0.5 : Math.round(bestReplyDelay))
+    : 0;
+  const displayDelaySuffix = isFinite(bestReplyDelay)
+    ? (bestReplyDelay < 1 ? '< 1 min' : ' min')
+    : '—';
+  const displayDelayValue = isFinite(bestReplyDelay) && bestReplyDelay < 1 ? 0 : displayDelay;
 
   // Top emoji
   const topEmoji = emojiUsageStats?.topEmojis?.[0]?.emoji || '—';
@@ -142,7 +151,7 @@ export default function StatsRow({ localStats }) {
         <StatCard icon={MessageSquare} label="Total Messages"  value={totalMessages}           color="pink"   delay={0.00} />
         <StatCard icon={BookOpen}       label="Total Words"     value={totalWords}               color="purple" delay={0.05} />
         <StatCard icon={SmilePlus}      label="Emojis Used"     value={totalEmojis}              color="cyan"   delay={0.10} />
-        <StatCard icon={Clock}          label="Fastest Reply"   value={displayDelay} suffix=" min" color="gold"   delay={0.15} subLabel="minutes average" />
+        <StatCard icon={Clock}          label="Fastest Reply"   value={displayDelayValue} suffix={displayDelaySuffix} color="gold"   delay={0.15} subLabel={isFinite(bestReplyDelay) ? 'minutes average' : 'no reply data'} />
         <StatCard icon={Moon}           label="Late Night Chats" value={Math.round(lateNightRatio * 100)} suffix="%" color="blue" delay={0.20} />
         <TextStatCard icon={Zap}        label="Fastest Replier"  value={whoRepliesFast}          color="green"  delay={0.25} />
       </div>

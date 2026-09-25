@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="50%" r="70%">
+      <stop offset="0%" stopColor="#1a0a2e" />
+      <stop offset="60%" stopColor="#08081a" />
+      <stop offset="100%" stopColor="#050510" />
+    </radialGradient>
+    <radialGradient id="glow" cx="50%" cy="40%" r="50%">
+      <stop offset="0%" stopColor="#ff2d78" stopOpacity="0.25" />
+      <stop offset="60%" stopColor="#8b5cf6" stopOpacity="0.15" />
+      <stop offset="100%" stopColor="#050510" stopOpacity="0" />
+    </radialGradient>
+    <linearGradient id="brandGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stopColor="#ff6eb0" />
+      <stop offset="50%" stopColor="#a855f7" />
+      <stop offset="100%" stopColor="#06b6d4" />
+    </linearGradient>
+    <linearGradient id="heartGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stopColor="#ff6eb0" />
+      <stop offset="50%" stopColor="#ff2d78" />
+      <stop offset="100%" stopColor="#8b5cf6" />
+    </linearGradient>
+    <filter id="blurGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="16" />
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bg)" />
+  <rect width="1200" height="630" fill="url(#glow)" />
+
+  <!-- Subtle grid lines -->
+  <g opacity="0.05" stroke="#ffffff" stroke-width="1">
+    <line x1="0" y1="105" x2="1200" y2="105" />
+    <line x1="0" y1="210" x2="1200" y2="210" />
+    <line x1="0" y1="315" x2="1200" y2="315" />
+    <line x1="0" y1="420" x2="1200" y2="420" />
+    <line x1="0" y1="525" x2="1200" y2="525" />
+    <line x1="200" y1="0" x2="200" y2="630" />
+    <line x1="400" y1="0" x2="400" y2="630" />
+    <line x1="600" y1="0" x2="600" y2="630" />
+    <line x1="800" y1="0" x2="800" y2="630" />
+    <line x1="1000" y1="0" x2="1000" y2="630" />
+  </g>
+
+  <!-- Decorative Circuit Glow -->
+  <circle cx="600" cy="190" r="140" fill="#8b5cf6" opacity="0.15" filter="url(#blurGlow)" />
+  <circle cx="600" cy="190" r="90" fill="#ff2d78" opacity="0.2" filter="url(#blurGlow)" />
+
+  <!-- App Icon Symbol -->
+  <g transform="translate(540, 130)">
+    <circle cx="60" cy="60" r="58" fill="#140b28" stroke="#8b5cf6" stroke-width="2" stroke-opacity="0.5" />
+    <!-- Heart shape inside -->
+    <path d="M60 88 C60 88 28 69 28 47 C28 35 37 27 48 27 C54 27 58 30 60 33 C62 30 66 27 72 27 C83 27 92 35 92 47 C92 69 60 88 60 88Z"
+          fill="url(#heartGrad)" />
+    <!-- Highlights -->
+    <circle cx="40" cy="38" r="3" fill="#ffffff" opacity="0.7" />
+    <circle cx="80" cy="38" r="3" fill="#ffffff" opacity="0.7" />
+    <circle cx="60" cy="74" r="3" fill="#ffffff" opacity="0.8" />
+  </g>
+
+  <!-- Brand Title -->
+  <text x="600" y="340" text-anchor="middle" font-family="'Outfit', system-ui, -apple-system, sans-serif" font-weight="900" font-size="76" fill="#ffffff" letter-spacing="-1">
+    Bond<tspan fill="url(#brandGrad)">IQ</tspan>
+  </text>
+
+  <!-- Subtitle -->
+  <text x="600" y="400" text-anchor="middle" font-family="'Inter', system-ui, -apple-system, sans-serif" font-weight="500" font-size="28" fill="#c4b5fd" letter-spacing="1">
+    AI-POWERED EMOTIONAL RELATIONSHIP INTELLIGENCE
+  </text>
+
+  <!-- Tagline -->
+  <text x="600" y="445" text-anchor="middle" font-family="'Inter', system-ui, -apple-system, sans-serif" font-weight="400" font-size="20" fill="rgba(255,255,255,0.6)">
+    Discover the emotional story hidden in your WhatsApp &amp; chat conversations • 100% Private
+  </text>
+
+  <!-- Developer Badge in Header/Footer of image -->
+  <g transform="translate(600, 520)">
+    <rect x="-190" y="-22" width="380" height="44" rx="22" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" />
+    <circle cx="-160" cy="0" r="5" fill="#10b981" />
+    <text x="-140" y="7" text-anchor="start" font-family="'Inter', system-ui, -apple-system, sans-serif" font-size="16" font-weight="500" fill="rgba(255,255,255,0.7)">
+      Developed by <tspan font-weight="700" fill="#ffffff">M Saad Shaikh</tspan>
+    </text>
+  </g>
+</svg>

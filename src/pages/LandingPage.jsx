@@ -3,6 +3,7 @@
  * Updated: added trust signals, data-flow visual, "how it works" steps
  */
 
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -10,7 +11,7 @@ import {
   Lock, Eye, Server, Monitor, CheckCircle2, ArrowRight, Upload,
   BarChart2, MessageSquare,
 } from 'lucide-react';
-import { useRef } from 'react';
+
 import BondIQLogo from '../components/common/BondIQLogo.jsx';
 
 // ── Particle Background ───────────────────────────────────────────────────────
@@ -204,6 +205,10 @@ function DataFlowDiagram() {
 export default function LandingPage() {
   const navigate = useNavigate();
 
+  useEffect(() => {
+    document.title = 'BondIQ — AI Relationship Intelligence & Chat Analysis';
+  }, []);
+
   const features = [
     { icon: Heart,         title: 'Relationship Score',      description: 'Get a precise emotional health score based on communication patterns, affection, and consistency.',               color: 'pink',   delay: 0.1 },
     { icon: Brain,         title: 'AI Emotional Analysis',   description: 'AI reads emotional undertones in your conversations — detecting warmth, tension, and connection depth.',           color: 'purple', delay: 0.2 },
@@ -229,17 +234,27 @@ export default function LandingPage() {
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
-        className="relative z-10 flex items-center justify-between px-6 md:px-12 py-6"
+        className="relative z-10 flex items-center justify-between px-4 sm:px-6 md:px-12 py-5"
       >
-        <BondIQLogo size={36} textSize="md" />
+        <div className="flex items-center gap-3 sm:gap-4">
+          <BondIQLogo size={36} textSize="md" />
+          <span className="hidden sm:inline-block w-px h-5 bg-white/10" />
+          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.05] border border-white/10 shadow-sm backdrop-blur-md">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-[11px] sm:text-xs text-white/70 font-medium">
+              Developed by <strong className="text-white font-semibold tracking-wide">M Saad Shaikh</strong>
+            </span>
+          </div>
+        </div>
+
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={() => navigate('/analyze')}
-          className="btn-primary text-sm px-5 py-2.5"
+          className="btn-primary text-xs sm:text-sm px-4 sm:px-5 py-2 sm:py-2.5"
         >
           <Sparkles size={14} />
-          Try Now — Free
+          <span>Try Now — Free</span>
         </motion.button>
       </motion.nav>
 
@@ -504,13 +519,13 @@ export default function LandingPage() {
           className="text-center mb-8"
         >
           <p className="text-white/30 text-xs font-medium tracking-widest uppercase mb-4">Supports</p>
-          <div className="flex flex-wrap justify-center gap-3">
+        <div className="flex flex-wrap justify-center gap-3">
             {[
               { label: 'WhatsApp',  emoji: '💬' },
               { label: 'Telegram',  emoji: '✈️' },
               { label: 'Instagram', emoji: '📸' },
-              { label: 'Messenger', emoji: '💙' },
               { label: 'Plain Text',emoji: '📄' },
+              { label: 'More soon…',emoji: '🔜', dim: true },
             ].map((p, i) => (
               <motion.span
                 key={p.label}
@@ -518,7 +533,7 @@ export default function LandingPage() {
                 whileInView={{ opacity: 1, scale: 1 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.07 }}
-                className="px-4 py-2 glass rounded-full text-sm text-white/60 border border-white/10 flex items-center gap-2"
+                className={`px-4 py-2 glass rounded-full text-sm border border-white/10 flex items-center gap-2 ${p.dim ? 'text-white/25' : 'text-white/60'}`}
               >
                 <span>{p.emoji}</span>{p.label}
               </motion.span>

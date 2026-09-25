@@ -31,9 +31,10 @@ const POSITIVE_WORDS = new Set([
 
 const NEGATIVE_WORDS = new Set([
   'sad','hate','angry','upset','hurt','pain','cry','crying','fight','argue',
-  'annoyed','frustrated','disappointed','lonely','miss','missing','gone',
+  'annoyed','frustrated','disappointed','lonely','gone',
   'tired','exhausted','stressed','worried','anxious','scared','fear','bad',
   'horrible','terrible','awful','sick','depressed','lost','confused','broken'
+  // NOTE: 'miss'/'missing' intentionally removed — "I miss you" is POSITIVE affection
 ]);
 
 const AFFECTIONATE_WORDS = new Set([
@@ -167,19 +168,22 @@ export function runLocalAnalysis(messages) {
     // Reply delay (only when sender switches and gap < 24 hours)
     if (prevMessage && prevMessage.sender !== s) {
       const delay = (new Date(msg.timestamp) - new Date(prevMessage.timestamp)) / 60000;
-      if (delay < 1440) {
+      // Only count as reply if gap is positive and < 24 hours (avoids corrupt timestamps)
+      if (delay > 0 && delay < 1440) {
         totalReplyDelay[s] += delay;
         replyCount[s]++;
       }
     }
 
     // Initiation: gap > 3 hours from last message = they started a new conversation
+    // FIX Bug #5: Do NOT auto-credit the very first message — that biases the "who texts first"
+    // metric toward whichever person happens to appear first in the export file.
     if (prevMessage) {
       const gap = (new Date(msg.timestamp) - new Date(prevMessage.timestamp)) / 3600000;
-      if (gap >= 3) st.initiations++;
-    } else {
-      st.initiations++; // very first message
+      if (gap >= 3) st.initiations++; // only gap-based initiations count
     }
+    // If prevMessage is null (first message ever), we deliberately skip counting it
+    // because we don't know if there was a gap — it's file start, not conversation start.
 
     prevMessage = msg;
   }
@@ -298,7 +302,8 @@ export function runLocalAnalysis(messages) {
 
   // ── Late night score (0–100) ──────────────────────────────
   // Higher = more late-night conversations (signal of emotional closeness)
-  const lateNightScore = Math.round(Math.min(lateNightRatio * 400, 100));
+  // Scaled so ~12.5% late-night msgs = 100 (more meaningful threshold than old 25%)
+  const lateNightScore = Math.round(Math.min(lateNightRatio * 800, 100));
 
   // ── Consistency score (0–10) ──────────────────────────────
   // Based on how evenly messages are spread across all months

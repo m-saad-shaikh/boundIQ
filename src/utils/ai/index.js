@@ -33,9 +33,9 @@ export const KEY_VALIDATORS = {
   },
   [PROVIDERS.OPENAI]: {
     prefix: 'sk-',
-    pattern: /^sk-[a-zA-Z0-9]{30,}$/,
+    pattern: /^sk-[a-zA-Z0-9\-_]{20,}$/,  // allow hyphens/underscores for sk-proj-xxx format
     placeholder: 'sk-proj-... or sk-...',
-    errorMsg: 'OpenAI keys typically start with "sk-".',
+    errorMsg: 'OpenAI keys typically start with "sk-" (e.g. sk-proj-... or sk-...).',
   },
   [PROVIDERS.OPENROUTER]: {
     prefix: 'sk-or-v1-',
@@ -89,30 +89,84 @@ export async function generateAnalysis({ provider, apiKey, messages, statsSummar
 // ─── Fallback / Local analysis (when no API key or AI fails) ─────────────────
 export function getDemoAnalysis(localStats) {
   const [p1, p2] = localStats.participants;
+  const totalMessages = localStats.totalMessages || 1;
+
+  // ── Improved score formula using actual chat data ──────────────────────────
+  const avgAffection = (
+    localStats.stats[p1].emotionScore.affectionate +
+    localStats.stats[p2].emotionScore.affectionate
+  ) / Math.max(totalMessages, 1);
+
+  const avgPositive = (
+    localStats.stats[p1].emotionScore.positive +
+    localStats.stats[p2].emotionScore.positive
+  ) / Math.max(totalMessages, 1);
+
+  const avgNegative = (
+    localStats.stats[p1].emotionScore.negative +
+    localStats.stats[p2].emotionScore.negative
+  ) / Math.max(totalMessages, 1);
+
+  // Sentiment positivity ratio (0-1)
+  const totalSentiment = avgPositive + avgNegative + 0.01;
+  const positivityRatio = avgPositive / totalSentiment;
 
   const score = Math.round(
-    50 +
-    localStats.consistencyScore * 2 +
-    (1 - localStats.lateNightRatio) * 5 +
-    Math.min(
-      (localStats.stats[p1].emotionScore.affectionate +
-       localStats.stats[p2].emotionScore.affectionate) * 2,
-      20
-    ) +
-    (localStats.mutualEngagementScore - 50) * 0.3
+    35 +
+    Math.min(localStats.consistencyScore * 3, 15) +   // up to 15pts (was 20 via *2)
+    Math.min(avgAffection * 50, 20) +                 // up to 20pts affection density
+    positivityRatio * 15 +                             // up to 15pts sentiment ratio
+    (localStats.mutualEngagementScore / 100) * 10 +   // up to 10pts balance
+    Math.min(localStats.lateNightScore / 100 * 5, 5)  // up to 5pts late night
   );
 
+  const clampedScore = Math.min(Math.max(score, 20), 95);
+
+  // ── Derive sentimentFlow from real emotionTimeline ─────────────────────────
+  // This replaces hardcoded fake data with actual chat sentiment over time
+  const timeline = localStats.emotionTimeline || [];
+  let sentimentFlow;
+
+  if (timeline.length >= 3) {
+    // Split into thirds for early/middle/recent
+    const thirdLen = Math.ceil(timeline.length / 3);
+    const zones = [
+      { label: 'Early',  entries: timeline.slice(0, thirdLen) },
+      { label: 'Middle', entries: timeline.slice(thirdLen, thirdLen * 2) },
+      { label: 'Recent', entries: timeline.slice(thirdLen * 2) },
+    ];
+    sentimentFlow = zones.map(({ label, entries }) => {
+      const totPos = entries.reduce((s, e) => s + e.positive, 0);
+      const totNeg = entries.reduce((s, e) => s + e.negative, 0);
+      const totAll = entries.reduce((s, e) => s + e.total, 0) || 1;
+      const pos = Math.round((totPos / totAll) * 100);
+      const neg = Math.round((totNeg / totAll) * 100);
+      return { label, positive: pos, neutral: Math.max(100 - pos - neg, 0), negative: neg };
+    });
+  } else if (timeline.length > 0) {
+    // Just 1-2 months: use as single data points
+    sentimentFlow = timeline.map(t => {
+      const total = t.total || 1;
+      const pos = Math.round((t.positive / total) * 100);
+      const neg = Math.round((t.negative / total) * 100);
+      return { label: t.month, positive: pos, neutral: Math.max(100 - pos - neg, 0), negative: neg };
+    });
+  } else {
+    // Pure fallback: use overall stats when no timeline available
+    const overallPos = Math.round(positivityRatio * 70);
+    const overallNeg = Math.round((1 - positivityRatio) * 30);
+    sentimentFlow = [
+      { label: 'Overall', positive: overallPos, neutral: 100 - overallPos - overallNeg, negative: overallNeg },
+    ];
+  }
+
   return {
-    relationshipScore:     Math.min(Math.max(score, 20), 95),
-    relationshipStatus:    score > 75 ? 'Emotionally Strong' : score > 55 ? 'Growing Bond' : 'Mixed Signals',
-    relationshipStatusEmoji: score > 75 ? '❤️' : score > 55 ? '🌱' : '😶',
-    emotionalProfile:       null,
-    communicationInsights:  [],
-    sentimentFlow: [
-      { label: 'Early',  positive: 60, neutral: 30, negative: 10 },
-      { label: 'Middle', positive: 55, neutral: 25, negative: 20 },
-      { label: 'Recent', positive: 65, neutral: 25, negative: 10 },
-    ],
+    relationshipScore:       clampedScore,
+    relationshipStatus:      clampedScore > 78 ? 'Emotionally Strong' : clampedScore > 60 ? 'Growing Bond' : clampedScore > 45 ? 'Mixed Signals' : 'Needs Work',
+    relationshipStatusEmoji: clampedScore > 78 ? '❤️' : clampedScore > 60 ? '🌱' : clampedScore > 45 ? '😶' : '💔',
+    emotionalProfile:        null,
+    communicationInsights:   [],
+    sentimentFlow,  // ← Now real data, not hardcoded!
     recommendations: [],
     aiStory:         null,
     keyMoments:      [],
@@ -121,6 +175,7 @@ export function getDemoAnalysis(localStats) {
     _usedDemoMode: true,
   };
 }
+
 
 /**
  * Test connectivity for the selected AI provider.

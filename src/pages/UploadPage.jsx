@@ -646,6 +646,10 @@ export default function UploadPage({ analysis, apiKey, setApiKey, provider, setP
 
   const { stage, progress, stageLabel, error, analyze, reset, isLoading } = analysis;
 
+  useEffect(() => {
+    document.title = 'Upload & Analyze Chat — BondIQ';
+  }, []);
+
   // ── Auto-navigate when done ────────────────────────────────
   useEffect(() => {
     if (analysis.isDone) navigate('/results');
@@ -769,7 +773,16 @@ export default function UploadPage({ analysis, apiKey, setApiKey, provider, setP
     });
   };
 
-  const canAnalyze = chatText.trim().length > 50;
+  const canAnalyze = chatText.trim().length > 100;
+
+  // Quick parse preview for user confidence (debounced via useMemo pattern)
+  const previewMsgCount = (() => {
+    if (chatText.trim().length < 50) return 0;
+    try {
+      const { messages } = parseChat(chatText, platform === 'auto' ? null : platform);
+      return messages.length;
+    } catch { return 0; }
+  })();
 
   // ── Loading screen ─────────────────────────────────────────
   if (isLoading) {
@@ -791,12 +804,18 @@ export default function UploadPage({ analysis, apiKey, setApiKey, provider, setP
       <motion.header
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="relative z-10 flex items-center justify-between px-6 md:px-12 py-6"
+        className="relative z-10 flex items-center justify-between px-4 sm:px-6 md:px-12 py-5"
       >
         <button onClick={() => navigate('/')} className="flex items-center gap-2 text-white/40 hover:text-white transition-colors text-sm">
           <ArrowLeft size={16} /> Back
         </button>
-        <BondIQLogo size={30} textSize="sm" />
+        <div className="flex items-center gap-2.5 sm:gap-3">
+          <BondIQLogo size={30} textSize="sm" />
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/[0.04] border border-white/10 text-[11px] text-white/60">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+            <span>Developed by <strong className="text-white font-semibold">M Saad Shaikh</strong></span>
+          </div>
+        </div>
       </motion.header>
 
       {/* ── Main Content ────────────────────────────────────── */}
@@ -932,8 +951,15 @@ export default function UploadPage({ analysis, apiKey, setApiKey, provider, setP
                         style={{ background: 'rgba(255,255,255,0.03)' }}
                       />
                       {chatText && (
-                        <div className="absolute bottom-3 right-3 text-white/20 text-xs">
-                          {chatText.split('\n').length} lines
+                        <div className="absolute bottom-3 right-3 flex items-center gap-2">
+                          {previewMsgCount > 0 && (
+                            <span className="text-emerald-400/70 text-xs font-medium">
+                              ✓ {previewMsgCount} msgs
+                            </span>
+                          )}
+                          <span className="text-white/20 text-xs">
+                            {chatText.split('\n').length} lines
+                          </span>
                         </div>
                       )}
                     </div>

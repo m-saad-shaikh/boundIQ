@@ -120,8 +120,10 @@ export default function SharePage() {
     getShare(id).then(result => {
       if (result.error) {
         setErrorMsg(result.error);
+        document.title = 'Score Not Found — BondIQ';
       } else {
         setData(result.data);
+        document.title = `${result.data.username}'s Relationship Score — BondIQ`;
       }
       setLoading(false);
     });
@@ -144,10 +146,16 @@ export default function SharePage() {
       <motion.header
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="relative z-10 flex items-center justify-between px-6 md:px-12 py-5 border-b border-white/5"
+        className="relative z-10 flex items-center justify-between px-4 sm:px-6 md:px-12 py-5 border-b border-white/5"
         style={{ background: 'rgba(5,5,16,0.8)', backdropFilter: 'blur(20px)' }}
       >
-        <BondIQLogo size={32} textSize="sm" />
+        <div className="flex items-center gap-2.5 sm:gap-3">
+          <BondIQLogo size={32} textSize="sm" />
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/[0.04] border border-white/10 text-[11px] text-white/60">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+            <span>Developed by <strong className="text-white font-semibold">M Saad Shaikh</strong></span>
+          </div>
+        </div>
 
         <motion.button
           whileHover={{ scale: 1.03 }}

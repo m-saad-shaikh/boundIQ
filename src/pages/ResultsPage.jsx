@@ -117,6 +117,10 @@ export default function ResultsPage({ analysis, apiKey, provider }) {
     setTimeout(() => setToast({ message: '', type: 'success' }), 5000);
   };
 
+  useEffect(() => {
+    document.title = 'Relationship Report — BondIQ';
+  }, []);
+
   // Guard: redirect if no data
   if (!localStats || !aiResult) {
     navigate('/analyze');
@@ -152,7 +156,13 @@ export default function ResultsPage({ analysis, apiKey, provider }) {
           <ArrowLeft size={16} /> New Analysis
         </button>
 
-        <BondIQLogo size={32} textSize="sm" />
+        <div className="flex items-center gap-2.5 sm:gap-3">
+          <BondIQLogo size={32} textSize="sm" />
+          <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/[0.04] border border-white/10 text-[11px] text-white/60">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+            <span>Developed by <strong className="text-white font-semibold">M Saad Shaikh</strong></span>
+          </div>
+        </div>
 
         <div className="flex gap-2">
           <ExportButton targetId="report" filename={`BondIQ-Report-${p1}-${p2}.pdf`} />
