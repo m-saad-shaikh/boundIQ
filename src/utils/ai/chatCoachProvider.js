@@ -79,27 +79,49 @@ ${recentExcerpts || 'No recent raw excerpts available'}
 
 // ─── Call Gemini ──────────────────────────────────────────────────────────────
 async function callGemini(apiKey, systemPrompt, messages) {
+  const cleanKey = (apiKey || '').trim().replace(/^["']|["']$/g, '');
   const { GoogleGenerativeAI } = await import('@google/generative-ai');
-  const genAI = new GoogleGenerativeAI(apiKey.trim());
-  const model = genAI.getGenerativeModel({
-    model: 'gemini-2.0-flash',
-    systemInstruction: systemPrompt,
-  });
+  const genAI = new GoogleGenerativeAI(cleanKey);
 
   const previousTurns = messages.slice(0, -1);
   const history = previousTurns.map(m => ({
     role: m.role === 'user' ? 'user' : 'model',
     parts: [{ text: m.content }],
   }));
-
-  const chat = model.startChat({ history });
   const lastMsg = messages[messages.length - 1];
-  const result  = await chat.sendMessage(lastMsg.content);
-  return result.response.text();
+
+  const modelsToTry = ['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash-8b', 'gemini-1.5-pro'];
+  let lastErr = null;
+
+  for (const modelName of modelsToTry) {
+    try {
+      const model = genAI.getGenerativeModel({
+        model: modelName,
+        systemInstruction: systemPrompt,
+      });
+      const chat = model.startChat({ history });
+      const result = await chat.sendMessage(lastMsg.content);
+      const text = result.response.text();
+      if (text) return text;
+    } catch (err) {
+      lastErr = err;
+      const msg = err.message || '';
+      if (msg.includes('API_KEY_INVALID') || msg.includes('400')) {
+        throw new Error('Invalid Gemini API key. Please check your key on Google AI Studio.');
+      }
+      if (msg.includes('429') || msg.includes('quota') || msg.includes('RESOURCE_EXHAUSTED')) {
+        throw new Error('QUOTA_EXCEEDED');
+      }
+      console.warn(`[BondIQ Chat Coach] Gemini model ${modelName} failed, trying next...`, err.message);
+    }
+  }
+
+  throw lastErr || new Error('Gemini failed to generate a response.');
 }
 
 // ─── Call OpenAI-compatible (OpenAI, Groq, OpenRouter) ───────────────────────
 async function callOpenAICompat(endpoint, apiKey, model, systemPrompt, messages, extraHeaders = {}) {
+  const cleanKey = (apiKey || '').trim().replace(/^["']|["']$/g, '');
   const body = {
     model,
     messages: [
@@ -115,7 +137,7 @@ async function callOpenAICompat(endpoint, apiKey, model, systemPrompt, messages,
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey.trim()}`,
+        'Authorization': `Bearer ${cleanKey}`,
         ...extraHeaders,
       },
       body: JSON.stringify(body),
@@ -136,12 +158,13 @@ async function callOpenAICompat(endpoint, apiKey, model, systemPrompt, messages,
 
 // ─── Call Claude ──────────────────────────────────────────────────────────────
 async function callClaude(apiKey, systemPrompt, messages) {
+  const cleanKey = (apiKey || '').trim().replace(/^["']|["']$/g, '');
   const response = await withTimeout(
     fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': apiKey.trim(),
+        'x-api-key': cleanKey,
         'anthropic-version': '2023-06-01',
         'anthropic-dangerously-allow-browser': 'true',
       },
@@ -188,14 +211,25 @@ export async function chatWithCoach({ provider, apiKey, messages, aiResult, loca
         return await callGemini(apiKey, systemPrompt, messages);
       }
 
-      case 'groq':
-        return await callOpenAICompat(
-          'https://api.groq.com/openai/v1/chat/completions',
-          apiKey,
-          'llama-3.1-8b-instant',
-          systemPrompt,
-          messages
-        );
+      case 'groq': {
+        const groqModels = ['qwen/qwen3.8-27b', 'openai/gpt-oss-20b', 'llama-3.3-70b-versatile', 'llama-3.1-8b-instant'];
+        let lastGroqErr = null;
+        for (const gm of groqModels) {
+          try {
+            return await callOpenAICompat(
+              'https://api.groq.com/openai/v1/chat/completions',
+              apiKey,
+              gm,
+              systemPrompt,
+              messages
+            );
+          } catch (gErr) {
+            if (gErr.message === 'QUOTA_EXCEEDED' || gErr.message.includes('Invalid API key')) throw gErr;
+            lastGroqErr = gErr;
+          }
+        }
+        throw lastGroqErr || new Error('Groq failed to respond.');
+      }
 
       case 'openai':
         return await callOpenAICompat(
@@ -210,11 +244,11 @@ export async function chatWithCoach({ provider, apiKey, messages, aiResult, loca
         return await callOpenAICompat(
           'https://openrouter.ai/api/v1/chat/completions',
           apiKey,
-          'google/gemini-2.5-flash',
+          'google/gemini-2.0-flash-001',
           systemPrompt,
           messages,
           {
-            'HTTP-Referer': window.location.origin,
+            'HTTP-Referer': typeof window !== 'undefined' ? window.location.origin : 'https://bound-iq.vercel.app',
             'X-Title': 'BondIQ Chat Coach',
           }
         );

@@ -52,6 +52,24 @@ export const KEY_VALIDATORS = {
 };
 
 /**
+ * Detects the AI provider based on known API key prefixes.
+ * @param {string} key
+ * @returns {string|null}
+ */
+export function detectProviderFromKey(key) {
+  if (!key) return null;
+  const trimmed = key.trim().replace(/^["']|["']$/g, '');
+  if (trimmed.startsWith('AIza')) return PROVIDERS.GEMINI;
+  if (trimmed.startsWith('gsk_')) return PROVIDERS.GROQ;
+  if (trimmed.startsWith('sk-or-v1-')) return PROVIDERS.OPENROUTER;
+  if (trimmed.startsWith('sk-ant-')) return PROVIDERS.CLAUDE;
+  if (trimmed.startsWith('sk-proj-') || (trimmed.startsWith('sk-') && !trimmed.startsWith('sk-or-') && !trimmed.startsWith('sk-ant-'))) {
+    return PROVIDERS.OPENAI;
+  }
+  return null;
+}
+
+/**
  * Validates the prefix format of an API key for a given provider.
  * @param {string} provider
  * @param {string} key
@@ -59,9 +77,10 @@ export const KEY_VALIDATORS = {
  */
 export function validateApiKey(provider, key) {
   if (!key) return false;
+  const trimmed = key.trim().replace(/^["']|["']$/g, '');
   const config = KEY_VALIDATORS[provider];
   if (!config) return true; // generic format check
-  return key.trim().startsWith(config.prefix);
+  return trimmed.startsWith(config.prefix);
 }
 
 /**
@@ -181,22 +200,43 @@ export function getDemoAnalysis(localStats) {
  * Test connectivity for the selected AI provider.
  */
 export async function testConnection({ provider, apiKey }) {
-  if (!apiKey || apiKey.trim().length < 10) {
+  const trimmedKey = (apiKey || '').trim().replace(/^["']|["']$/g, '');
+  if (!trimmedKey || trimmedKey.length < 8) {
     throw new Error('Please enter a valid API key first.');
   }
 
-  const trimmedKey = apiKey.trim();
   const selectedProvider = provider || PROVIDERS.GEMINI;
 
   switch (selectedProvider) {
     case PROVIDERS.GEMINI: {
       const { GoogleGenerativeAI } = await import('@google/generative-ai');
       const genAI = new GoogleGenerativeAI(trimmedKey);
-      const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
-      const result = await model.generateContent('Reply with exactly OK.');
-      const text = result.response.text().trim().toLowerCase();
-      if (!text || text.length === 0) {
-        throw new Error('Empty response from Gemini.');
+      let success = false;
+      let lastErr = null;
+
+      // Try canonical Gemini models in order of stability
+      for (const mName of ['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro']) {
+        try {
+          const model = genAI.getGenerativeModel({ model: mName });
+          const result = await model.generateContent('OK');
+          const text = result.response.text();
+          if (text) {
+            success = true;
+            break;
+          }
+        } catch (mErr) {
+          lastErr = mErr;
+          const msg = mErr.message || '';
+          if (msg.includes('API_KEY_INVALID') || msg.includes('400')) {
+            throw new Error('Invalid Gemini API key. Please check your key on Google AI Studio.');
+          }
+          if (msg.includes('429') || msg.includes('quota') || msg.includes('RESOURCE_EXHAUSTED')) {
+            throw new Error('QUOTA_EXCEEDED');
+          }
+        }
+      }
+      if (!success) {
+        throw lastErr || new Error('Connection failed with Gemini.');
       }
       break;
     }
@@ -222,21 +262,42 @@ export async function testConnection({ provider, apiKey }) {
     }
 
     case PROVIDERS.GROQ: {
-      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${trimmedKey}`
-        },
-        body: JSON.stringify({
-          model: 'llama-3.1-8b-instant',
-          messages: [{ role: 'user', content: 'OK' }],
-          max_tokens: 5
-        })
-      });
-      if (!response.ok) {
+      const groqModels = ['qwen/qwen3.8-27b', 'openai/gpt-oss-20b', 'llama-3.3-70b-versatile', 'llama-3.1-8b-instant'];
+      let groqSuccess = false;
+      let groqErr = null;
+
+      for (const gm of groqModels) {
+        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${trimmedKey}`
+          },
+          body: JSON.stringify({
+            model: gm,
+            messages: [{ role: 'user', content: 'OK' }],
+            max_tokens: 5
+          })
+        });
+
+        if (response.ok) {
+          groqSuccess = true;
+          break;
+        }
+
         const err = await response.json().catch(() => ({}));
-        throw new Error(err.error?.message || `HTTP ${response.status}`);
+        const msg = err.error?.message || `HTTP ${response.status}`;
+        if (response.status === 401) {
+          throw new Error('Invalid Groq API key. Please check your key from console.groq.com');
+        }
+        if (response.status === 429) {
+          throw new Error('QUOTA_EXCEEDED');
+        }
+        groqErr = new Error(msg);
+      }
+
+      if (!groqSuccess) {
+        throw groqErr || new Error('Connection failed with Groq.');
       }
       break;
     }
@@ -249,7 +310,7 @@ export async function testConnection({ provider, apiKey }) {
           'Authorization': `Bearer ${trimmedKey}`
         },
         body: JSON.stringify({
-          model: 'google/gemini-2.5-flash-lite:free',
+          model: 'google/gemini-2.0-flash-001',
           messages: [{ role: 'user', content: 'OK' }],
           max_tokens: 5
         })

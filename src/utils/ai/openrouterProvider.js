@@ -7,18 +7,19 @@ import { buildRepresentativeSample } from '../localAnalysis.js';
 import { buildPrompt, formatChatSample, withTimeout, parseAndValidateJSON } from './promptHelper.js';
 
 export async function analyzeWithOpenRouter({ messages, statsSummary, participants, apiKey }) {
-  if (!apiKey || apiKey.trim().length < 10) {
+  const cleanKey = (apiKey || '').trim().replace(/^["']|["']$/g, '');
+  if (!cleanKey || cleanKey.length < 10) {
     throw new Error('A valid OpenRouter API key is required.');
   }
 
-  // OpenRouter (gemini-2.5-flash): 1M token context.
+  // OpenRouter (gemini-2.0-flash): 1M token context.
   // Budget = 80,000 chars (~20,000 tokens).
   const sampled    = buildRepresentativeSample(messages, 80000);
   const chatSample = formatChatSample(sampled, messages.length);
   const prompt     = buildPrompt(chatSample, statsSummary, participants);
 
   const requestBody = {
-    model: 'google/gemini-2.5-flash',
+    model: 'google/gemini-2.0-flash-001',
     messages: [
       { role: 'user', content: prompt }
     ],
@@ -27,7 +28,7 @@ export async function analyzeWithOpenRouter({ messages, statsSummary, participan
   };
 
   try {
-    console.log('[BondIQ] Querying OpenRouter (google/gemini-2.5-flash)...');
+    console.log('[BondIQ] Querying OpenRouter (google/gemini-2.0-flash-001)...');
 
     const response = await withTimeout(
       fetch('https://openrouter.ai/api/v1/chat/completions', {

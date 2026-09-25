@@ -7,7 +7,8 @@ import { buildRepresentativeSample } from '../localAnalysis.js';
 import { buildPrompt, formatChatSample, withTimeout, parseAndValidateJSON } from './promptHelper.js';
 
 export async function analyzeWithOpenAI({ messages, statsSummary, participants, apiKey }) {
-  if (!apiKey || apiKey.trim().length < 10) {
+  const cleanKey = (apiKey || '').trim().replace(/^["']|["']$/g, '');
+  if (!cleanKey || cleanKey.length < 10) {
     throw new Error('A valid OpenAI API key is required.');
   }
 
@@ -33,7 +34,7 @@ export async function analyzeWithOpenAI({ messages, statsSummary, participants, 
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey.trim()}`
+          'Authorization': `Bearer ${cleanKey}`
         },
         body: JSON.stringify(requestBody)
       })

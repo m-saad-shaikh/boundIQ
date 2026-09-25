@@ -7,19 +7,20 @@ import { buildRepresentativeSample } from '../localAnalysis.js';
 import { buildPrompt, formatChatSample, withTimeout, parseAndValidateJSON } from './promptHelper.js';
 
 const GEMINI_MODELS = [
+  'gemini-1.5-flash',
   'gemini-2.0-flash',
-  'gemini-2.0-flash-lite',
-  'gemini-1.5-flash-latest',
   'gemini-1.5-flash-8b',
+  'gemini-1.5-pro',
 ];
 
 export async function analyzeWithGemini({ messages, statsSummary, participants, apiKey }) {
-  if (!apiKey || apiKey.trim().length < 10) {
+  const cleanKey = (apiKey || '').trim().replace(/^["']|["']$/g, '');
+  if (!cleanKey || cleanKey.length < 10) {
     throw new Error('A valid Gemini API key is required.');
   }
 
   const { GoogleGenerativeAI } = await import('@google/generative-ai');
-  const genAI = new GoogleGenerativeAI(apiKey.trim());
+  const genAI = new GoogleGenerativeAI(cleanKey);
 
   // Gemini free tier: 1M token context, 15 RPM.
   // Budget = 80,000 chars (~20,000 tokens) — plenty of headroom.

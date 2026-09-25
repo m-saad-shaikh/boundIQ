@@ -30,3 +30,7 @@ dist-ssr
 
 # Android native build folder
 /android
+
+# Secret keys / user text exports
+*.text
+api keys*

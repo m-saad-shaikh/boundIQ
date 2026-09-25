@@ -19,7 +19,7 @@ import {
 import LoadingScreen from '../components/analysis/LoadingScreen.jsx';
 import ParticipantConfirm from '../components/analysis/ParticipantConfirm.jsx';
 import { parseChat, getParticipantStats } from '../utils/chatParser.js';
-import { PROVIDERS, KEY_VALIDATORS, validateApiKey, testConnection } from '../utils/ai/index.js';
+import { PROVIDERS, KEY_VALIDATORS, validateApiKey, testConnection, detectProviderFromKey } from '../utils/ai/index.js';
 import BondIQLogo from '../components/common/BondIQLogo.jsx';
 
 // ── Per-provider API Key Guide config ─────────────────────────────────────────
@@ -698,33 +698,38 @@ export default function UploadPage({ analysis, apiKey, setApiKey, provider, setP
 
   // ── Test API Key Connection (Task 8) ───────────────────────
   const handleTestConnection = async () => {
-    if (!apiKey || apiKey.trim().length < 10) {
+    const cleanKey = (apiKey || '').trim().replace(/^["']|["']$/g, '');
+    if (!cleanKey || cleanKey.length < 8) {
       setTestStatus('fail');
-      setTestMsg('Please enter a valid API key first.');
+      setTestMsg('Please enter an API key first.');
       return;
     }
 
-    if (!validateApiKey(provider, apiKey)) {
-      setTestStatus('fail');
-      setTestMsg(KEY_VALIDATORS[provider]?.errorMsg || 'Invalid key prefix.');
-      return;
+    // Auto-detect provider if user pasted a key for a different provider
+    const detected = detectProviderFromKey(cleanKey);
+    let activeProvider = provider;
+    if (detected && detected !== provider) {
+      setProvider(detected);
+      activeProvider = detected;
     }
 
     setTestStatus('testing');
     setTestMsg('');
 
     try {
-      await testConnection({ provider, apiKey });
+      await testConnection({ provider: activeProvider, apiKey: cleanKey });
       setTestStatus('ok');
-      setTestMsg(`Connection successful! ${provider.toUpperCase()} is ready.`);
+      setTestMsg(`✅ Connection successful! ${activeProvider.toUpperCase()} is connected and ready.`);
     } catch (err) {
       setTestStatus('fail');
       const msg = err.message || '';
-      if (msg.includes('429') || msg.includes('quota')) {
-        setTestMsg('API key is valid but quota is exhausted. Try tomorrow or upgrade your plan.');
-        setTestStatus('ok'); // Key is technically valid
+      if (msg.includes('429') || msg.includes('quota') || msg.includes('QUOTA_EXCEEDED')) {
+        setTestMsg('API key is valid, but your free quota is temporarily exhausted.');
+        setTestStatus('ok'); // Key is technically verified
+      } else if (msg.includes('API_KEY_INVALID') || msg.includes('401') || msg.includes('403')) {
+        setTestMsg('Invalid API key. Please check your key from your provider dashboard.');
       } else {
-        setTestMsg(msg || 'Connection failed. Please check your API key.');
+        setTestMsg(msg || 'Connection failed. Please check your key or internet connection.');
       }
     }
   };
@@ -1091,7 +1096,16 @@ export default function UploadPage({ analysis, apiKey, setApiKey, provider, setP
                   id="api-key-input"
                   type={showKey ? 'text' : 'password'}
                   value={apiKey}
-                  onChange={e => { setApiKey(e.target.value); setTestStatus('idle'); setTestMsg(''); }}
+                  onChange={e => {
+                    const val = e.target.value;
+                    setApiKey(val);
+                    setTestStatus('idle');
+                    setTestMsg('');
+                    const detected = detectProviderFromKey(val);
+                    if (detected && detected !== provider) {
+                      setProvider(detected);
+                    }
+                  }}
                   placeholder={`Paste your ${provider.charAt(0).toUpperCase() + provider.slice(1)} API key: ${KEY_VALIDATORS[provider]?.placeholder || 'sk-...'}`}
                   className="w-full rounded-xl px-4 py-3.5 pr-24 text-sm text-white/80 placeholder-white/25 outline-none border transition-all duration-200 font-mono"
                   style={{
